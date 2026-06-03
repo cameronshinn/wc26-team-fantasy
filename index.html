@@ -76,6 +76,8 @@
   .tot .lab{font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--mut);margin-top:4px}
   .alive{font-family:var(--mono);font-size:11px;color:var(--mut);margin-top:7px}
   .alive b{color:var(--pc)}
+  .odds{font-family:var(--mono);font-weight:700;font-size:18px;color:var(--pc);margin-top:10px;line-height:1}
+  .oddslab{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--mut);margin-top:3px;font-weight:400}
 
   .note{font-family:var(--mono);font-size:11px;color:var(--mut2);margin-top:18px;line-height:1.6}
 
@@ -249,6 +251,149 @@ Object.keys(TEAMS).forEach(t=>GROUPS[TEAMS[t].g].push(t));
 const PAIRS=[[0,1],[2,3],[0,2],[3,1],[3,0],[1,2]];
 function fixtures(L){const t=GROUPS[L];return PAIRS.map(([i,j])=>({home:t[i],away:t[j],key:`${L}|${t[i]}|${t[j]}`}));}
 
+/* ========================= ELO RATINGS (pre-tournament, from FanDuel odds Jun 2 2026) ========================= */
+const ELO={
+  "Spain":2090,"France":2080,"England":2045,"Brazil":2030,"Argentina":2030,
+  "Portugal":2010,"Germany":1990,"Netherlands":1955,"Belgium":1905,"Colombia":1885,
+  "Croatia":1885,"Uruguay":1885,"Morocco":1880,"Norway":1875,"Senegal":1845,
+  "Switzerland":1840,"Japan":1840,"USA":1835,"Sweden":1795,"Ivory Coast":1790,
+  "Mexico":1815,"Ecuador":1810,"Austria":1810,"Turkey":1805,"South Korea":1785,
+  "Egypt":1785,"Canada":1785,"Scotland":1780,"Iran":1780,"Czechia":1780,
+  "Ghana":1770,"Algeria":1770,"Bosnia":1760,"Australia":1750,"Tunisia":1740,
+  "Paraguay":1745,"DR Congo":1725,"Saudi Arabia":1720,"Qatar":1720,"South Africa":1710,
+  "Uzbekistan":1710,"Panama":1700,"Jordan":1660,"Iraq":1660,"Cape Verde":1680,
+  "New Zealand":1650,"Haiti":1620,"Curacao":1620
+};
+
+/* ========================= MONTE CARLO SIMULATION ========================= */
+function simPoisson(lam){
+  const L=Math.exp(-lam);let k=0,p=1;
+  do{k++;p*=Math.random();}while(p>L);
+  return Math.min(k-1,8);
+}
+function simGroupGoals(a,b){
+  const d=(ELO[a]||1750)-(ELO[b]||1750);
+  return[simPoisson(1.35*Math.exp(d/350)),simPoisson(1.35*Math.exp(-d/350))];
+}
+function simKOWin(a,b){
+  const d=(ELO[a]||1750)-(ELO[b]||1750);
+  return Math.random()<1/(1+Math.pow(10,-d/400))?a:b;
+}
+
+let _simOdds=null,_simKey='';
+function getSimOdds(){
+  const key=JSON.stringify(R);
+  if(key===_simKey&&_simOdds)return _simOdds;
+  _simOdds=runMonteCarlo(5000);
+  _simKey=key;
+  return _simOdds;
+}
+
+function runMonteCarlo(N){
+  const wc={};Object.keys(PLAYERS).forEach(p=>wc[p]=0);
+  const knownKO=new Map();
+  R.koGames.forEach(g=>{
+    if(g.winner&&g.a&&g.b){
+      knownKO.set(g.a+'|'+g.b,g.winner);
+      knownKO.set(g.b+'|'+g.a,g.winner);
+    }
+  });
+
+  for(let iter=0;iter<N;iter++){
+    const S={};Object.keys(PLAYERS).forEach(p=>S[p]=0);
+    const tpts={},tgd={},tgf={},tgoals={};
+    Object.keys(TEAMS).forEach(t=>{tpts[t]=0;tgd[t]=0;tgf[t]=0;tgoals[t]=0;});
+
+    // Group stage — lock in real results, simulate the rest
+    GROUP_LETTERS.forEach(L=>{
+      fixtures(L).forEach(f=>{
+        let hg,ag;
+        const kn=R.groupGames[f.key];
+        if(kn&&kn.hg!=null&&kn.ag!=null&&kn.hg!==''&&kn.ag!==''&&!Number.isNaN(+kn.hg)&&!Number.isNaN(+kn.ag)){
+          hg=+kn.hg;ag=+kn.ag;
+        }else{
+          [hg,ag]=simGroupGoals(f.home,f.away);
+        }
+        tgoals[f.home]+=hg;tgoals[f.away]+=ag;
+        tgf[f.home]+=hg;tgf[f.away]+=ag;
+        tgd[f.home]+=(hg-ag);tgd[f.away]+=(ag-hg);
+        const ho=TEAMS[f.home].o,ao=TEAMS[f.away].o;
+        if(hg>ag){tpts[f.home]+=3;if(ho)S[ho]+=SCORING.groupWin;}
+        else if(ag>hg){tpts[f.away]+=3;if(ao)S[ao]+=SCORING.groupWin;}
+        else{tpts[f.home]++;tpts[f.away]++;if(ho)S[ho]+=SCORING.groupDraw;if(ao)S[ao]+=SCORING.groupDraw;}
+      });
+    });
+
+    // Determine 32 qualifiers: top 2 per group + best 8 thirds
+    const gWinners=[],gRunners=[];
+    const allThirds=[];
+    GROUP_LETTERS.forEach(L=>{
+      const ranked=GROUPS[L].slice().sort((a,b)=>tpts[b]-tpts[a]||tgd[b]-tgd[a]||tgf[b]-tgf[a]||a.localeCompare(b));
+      gWinners.push(ranked[0]);gRunners.push(ranked[1]);
+      allThirds.push({team:ranked[2],pts:tpts[ranked[2]],gd:tgd[ranked[2]],gf:tgf[ranked[2]]});
+      const o1=TEAMS[ranked[0]].o,o2=TEAMS[ranked[1]].o;
+      if(o1)S[o1]+=SCORING.advance;
+      if(o2)S[o2]+=SCORING.advance;
+    });
+    allThirds.sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
+    const top8thirds=allThirds.slice(0,8).map(x=>x.team);
+    top8thirds.forEach(t=>{const o=TEAMS[t].o;if(o)S[o]+=SCORING.advance;});
+
+    // Build R32 bracket: q[0..11]=winners, q[12..23]=runners-up, q[24..31]=best-8 thirds
+    // Pair top half vs bottom half: q[i] vs q[i+16] for i in 0..15
+    const q=[...gWinners,...gRunners,...top8thirds];
+    const r32in=[];
+    for(let j=0;j<16;j++)r32in.push(q[j],q[j+16]);
+
+    function doRound(teams){
+      const next=[],losers=[];
+      for(let j=0;j<teams.length;j+=2){
+        const a=teams[j],b=teams[j+1];
+        if(!a||!b){next.push(a||b||null);losers.push(null);continue;}
+        const k=a+'|'+b;
+        const w=knownKO.has(k)?knownKO.get(k):simKOWin(a,b);
+        const wo=TEAMS[w]?.o;if(wo)S[wo]+=SCORING.koWin;
+        tgoals[w]+=3; // deep-run bonus for golden boot proxy
+        next.push(w);losers.push(w===a?b:a);
+      }
+      return{next,losers};
+    }
+
+    const{next:r16in}=doRound(r32in);
+    const{next:qfin}=doRound(r16in);
+    const{next:sfin}=doRound(qfin);
+    const{next:finalists,losers:sfLosers}=doRound(sfin);
+    doRound(finalists); // Final — award KO win to champion
+
+    // 3rd place playoff
+    if(R.thirdPlace){
+      const tpo=TEAMS[R.thirdPlace]?.o;
+      if(tpo){S[tpo]+=SCORING.koWin;S[tpo]+=SCORING.thirdPlace;}
+    }else{
+      const[sl0,sl1]=sfLosers.filter(Boolean);
+      if(sl0&&sl1){
+        const k=sl0+'|'+sl1;
+        const tp=knownKO.has(k)?knownKO.get(k):simKOWin(sl0,sl1);
+        const tpo=TEAMS[tp]?.o;
+        if(tpo){S[tpo]+=SCORING.koWin;S[tpo]+=SCORING.thirdPlace;}
+      }
+    }
+
+    // Golden boot
+    if(R.goldenBoot){
+      const gbo=TEAMS[R.goldenBoot]?.o;if(gbo)S[gbo]+=SCORING.goldenBoot;
+    }else{
+      const gb=Object.keys(tgoals).reduce((a,b)=>tgoals[a]>=tgoals[b]?a:b);
+      const gbo=TEAMS[gb]?.o;if(gbo)S[gbo]+=SCORING.goldenBoot;
+    }
+
+    const pw=Object.keys(S).reduce((a,b)=>S[a]>=S[b]?a:b);
+    wc[pw]++;
+  }
+
+  return Object.fromEntries(Object.keys(wc).map(p=>[p,wc[p]/N]));
+}
+
 /* ========================= STATE ========================= */
 let R = window.WC_RESULTS || {groupGames:{},koGames:[],goldenBoot:null,thirdPlace:null};
 R.groupGames=R.groupGames||{}; R.koGames=R.koGames||[]; let dirty=false;
@@ -325,11 +470,13 @@ function scores(){
 /* ========================= RENDER ========================= */
 function renderBoard(){
   const S=scores();
+  const odds=getSimOdds();
   const order=Object.keys(PLAYERS).sort((a,b)=>S[b].total-S[a].total);
   const max=Math.max(1,...order.map(p=>S[p].total));
   const el=document.getElementById("board"); el.innerHTML="";
   order.forEach((p,i)=>{
     const x=S[p];
+    const pct=(odds[p]*100).toFixed(1);
     const row=document.createElement("div");
     row.className="row"+(i===0&&x.total>0?" first":"");
     row.style.setProperty("--pc",PLAYERS[p].color);
@@ -345,534 +492,10 @@ function renderBoard(){
         </div>
         <div class="alive">Teams advanced <b>${x.advanced}</b> · still alive <b>${x.alive}</b></div>
       </div>
-      <div class="tot"><div class="pts">${x.total}</div><div class="lab">Points</div></div>`;
-    el.appendChild(row);
-  });
-  // animate bars
-  requestAnimationFrame(()=>el.querySelectorAll(".bar>i").forEach(i=>{const w=i.style.width;i.style.width="0";requestAnimationFrame(()=>i.style.width=w);}));
-  const adv=advancers();
-  document.getElementById("boardnote").innerHTML =
-    `Scoring · group win ${SCORING.groupWin} · draw ${SCORING.groupDraw} · advance ${SCORING.advance} · each knockout win ${SCORING.koWin} · Golden Boot ${SCORING.goldenBoot} · 3rd place ${SCORING.thirdPlace}.<br>`+
-    (adv.thirdsResolved? "All groups complete — best-third places resolved." : "Best-third-place spots resolve once every group has played all six games.");
-}
-
-function renderGroups(){
-  const A=advancers();
-  const host=document.getElementById("groups"); host.innerHTML="";
-  GROUP_LETTERS.forEach(L=>{
-    const s=groupStandings(L);
-    const card=document.createElement("div"); card.className="gcard";
-    let rows="";
-    s.ranked.forEach((r,idx)=>{
-      const advanced=A.set.has(r.team);
-      const t=TEAMS[r.team]; const own=t.o?t.o:"—";
-      rows+=`<tr class="${advanced?'adv':''}">
-        <td><div class="tn"><span class="dot" style="--tc:${ownerColor(r.team)}"></span>
-          <span class="nm ${t.o?'':'undr'}">${r.team}</span><span class="own">${own}</span></div></td>
-        <td class="num">${r.pl}</td><td class="num">${r.gd>0?'+':''}${r.gd}</td><td class="pt">${r.pts}</td></tr>`;
-    });
-    card.innerHTML=`<h3>Group ${L}<span class="st ${s.complete?'done':''}">${s.complete?'final':s.played+'/6'}</span></h3>
-      <table class="std">${rows}</table>`;
-    host.appendChild(card);
-  });
-}
-
-const ROUND_NAMES={R32:"Round of 32",R16:"Round of 16",QF:"Quarter-finals",SF:"Semi-finals",F:"Final"};
-function renderKO(){
-  const host=document.getElementById("korounds"); host.innerHTML="";
-  const rounds=["R32","R16","QF","SF","F"];
-  const any=R.koGames.length>0;
-  if(!any){ host.innerHTML=`<div class="empty">No knockout matches entered yet — add them in Commissioner mode once the bracket is set.</div>`; }
-  rounds.forEach(rd=>{
-    const games=R.koGames.filter(g=>g.round===rd); if(!games.length)return;
-    const block=document.createElement("div"); block.className="koround";
-    let html=`<h3>${ROUND_NAMES[rd]}</h3>`;
-    games.forEach(g=>{
-      const aw=g.winner===g.a, bw=g.winner===g.b;
-      const o=g.winner?TEAMS[g.winner]?.o:null;
-      html+=`<div class="kogame">
-        <span class="side ${aw?'win':''}"><span class="dot" style="--tc:${ownerColor(g.a)}"></span><span class="nm">${g.a||'TBD'}</span></span>
-        <span class="vs">vs</span>
-        <span class="side ${bw?'win':''}"><span class="dot" style="--tc:${ownerColor(g.b)}"></span><span class="nm">${g.b||'TBD'}</span></span>
-        ${g.winner?`<span class="tag">+5 ${o||'—'}</span>`:''}</div>`;
-    });
-    block.innerHTML=html; host.appendChild(block);
-  });
-}
-
-/* ----- commissioner ----- */
-function teamOptions(sel){
-  let o=`<option value="">— none —</option>`;
-  Object.keys(TEAMS).sort().forEach(t=>o+=`<option value="${t}" ${sel===t?'selected':''}>${t} (${TEAMS[t].o||'undrafted'})</option>`);
-  return o;
-}
-function renderCommGroups(){
-  const host=document.getElementById("commGroups"); host.innerHTML="";
-  GROUP_LETTERS.forEach(L=>{
-    const card=document.createElement("div"); card.className="gcard";
-    let html=`<h3>Group ${L}</h3>`;
-    fixtures(L).forEach(f=>{
-      const r=R.groupGames[f.key]||{};
-      html+=`<div class="fix">
-        <span class="t"><span class="dot" style="--tc:${ownerColor(f.home)}"></span><span class="nm">${f.home}</span></span>
-        <input class="score" inputmode="numeric" data-k="${f.key}" data-s="hg" value="${r.hg??''}">
-        <span class="dash">–</span>
-        <input class="score" inputmode="numeric" data-k="${f.key}" data-s="ag" value="${r.ag??''}">
-        <span class="t away"><span class="nm">${f.away}</span><span class="dot" style="--tc:${ownerColor(f.away)}"></span></span>
+      <div class="tot">
+        <div class="pts">${x.total}</div><div class="lab">Points</div>
+        <div class="odds">${pct}%</div><div class="oddslab">to win</div>
       </div>`;
-    });
-    card.innerHTML=html; host.appendChild(card);
-  });
-  host.querySelectorAll("input.score").forEach(inp=>{
-    inp.addEventListener("input",e=>{
-      const k=e.target.dataset.k,s=e.target.dataset.s,v=e.target.value.replace(/[^0-9]/g,'');
-      e.target.value=v;
-      R.groupGames[k]=R.groupGames[k]||{hg:"",ag:""};
-      R.groupGames[k][s]=v;
-      if(R.groupGames[k].hg===""&&R.groupGames[k].ag==="") delete R.groupGames[k];
-      markDirty(); liveTally();
-    });
-  });
-}
-function renderCommKO(){
-  const host=document.getElementById("commKO"); host.innerHTML="";
-  if(!R.koGames.length){host.innerHTML=`<div class="empty">No matches yet. Use “Add knockout match”.</div>`;}
-  R.koGames.forEach((g,idx)=>{
-    const row=document.createElement("div"); row.className="korow";
-    row.innerHTML=`
-      <select data-i="${idx}" data-f="round">
-        ${["R32","R16","QF","SF","F"].map(r=>`<option value="${r}" ${g.round===r?'selected':''}>${ROUND_NAMES[r]}</option>`).join("")}
-      </select>
-      <select data-i="${idx}" data-f="a">${teamOptions(g.a)}</select>
-      <span class="vs" style="font-family:var(--mono);color:var(--mut2)">vs</span>
-      <select data-i="${idx}" data-f="b">${teamOptions(g.b)}</select>
-      <span style="font-family:var(--mono);color:var(--mut2);font-size:11px">winner</span>
-      <select data-i="${idx}" data-f="winner">
-        <option value="">—</option>
-        ${[g.a,g.b].filter(Boolean).map(t=>`<option value="${t}" ${g.winner===t?'selected':''}>${t}</option>`).join("")}
-      </select>
-      <button class="x" data-del="${idx}">remove</button>`;
-    host.appendChild(row);
-  });
-  host.querySelectorAll("select").forEach(s=>s.addEventListener("change",e=>{
-    const i=+e.target.dataset.i,f=e.target.dataset.f;
-    R.koGames[i][f]=e.target.value;
-    if(f==="a"||f==="b"){ if(R.koGames[i].winner!==R.koGames[i].a&&R.koGames[i].winner!==R.koGames[i].b)R.koGames[i].winner=""; renderCommKO(); }
-    markDirty(); liveTally();
-  }));
-  host.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",e=>{
-    R.koGames.splice(+e.target.dataset.del,1); renderCommKO(); markDirty(); liveTally();
-  }));
-}
-function renderAwards(){
-  const gb=document.getElementById("gb"), th=document.getElementById("third");
-  gb.innerHTML=teamOptions(R.goldenBoot); th.innerHTML=teamOptions(R.thirdPlace);
-  gb.onchange=e=>{R.goldenBoot=e.target.value||null;markDirty();liveTally();};
-  th.onchange=e=>{R.thirdPlace=e.target.value||null;markDirty();liveTally();};
-}
-function liveTally(){
-  const S=scores(); const order=Object.keys(PLAYERS).sort((a,b)=>S[b].total-S[a].total);
-  document.getElementById("clive").innerHTML="Live: "+order.map((p,i)=>`${i+1}. <b>${p}</b> ${S[p].total}`).join(" · ");
-}
-function markDirty(){dirty=true;document.getElementById("export").classList.add("dirty");}
-
-/* ----- export / import ----- */
-function exportFile(){
-  const body=
-`/* =============================================================
-   LIVE RESULTS  —  generated by Commissioner Mode on ${new Date().toISOString().slice(0,10)}.
-   Commit this file to update everyone's dashboard.
-============================================================= */
-window.WC_RESULTS = ${JSON.stringify({groupGames:R.groupGames,koGames:R.koGames,goldenBoot:R.goldenBoot,thirdPlace:R.thirdPlace},null,2)};
-`;
-  const blob=new Blob([body],{type:"text/javascript"});
-  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="results.js"; a.click();
-  URL.revokeObjectURL(a.href);
-  dirty=false; document.getElementById("export").classList.remove("dirty");
-}
-function copyResults(){
-  const txt="window.WC_RESULTS = "+JSON.stringify({groupGames:R.groupGames,koGames:R.koGames,goldenBoot:R.goldenBoot,thirdPlace:R.thirdPlace},null,2)+";";
-  navigator.clipboard?.writeText(txt).then(()=>{const b=document.getElementById("copy");b.textContent="Copied!";setTimeout(()=>b.textContent="Copy",1200);});
-}
-function importFile(file){
-  const fr=new FileReader();
-  fr.onload=()=>{
-    try{
-      const txt=fr.result; const s=txt.indexOf("{"), e=txt.lastIndexOf("}");
-      const obj=JSON.parse(txt.slice(s,e+1));
-      R={groupGames:obj.groupGames||{},koGames:obj.koGames||[],goldenBoot:obj.goldenBoot??null,thirdPlace:obj.thirdPlace??null};
-      renderAll(); markDirty();
-    }catch(err){alert("Could not read that file. Expecting a results.js / JSON export.");}
-  };
-  fr.readAsText(file);
-}
-
-/* ========================= WIRE-UP ========================= */
-function renderAll(){renderBoard();renderGroups();renderKO();renderCommGroups();renderCommKO();renderAwards();liveTally();}
-document.getElementById("tabs").addEventListener("click",e=>{
-  const b=e.target.closest(".tab"); if(!b)return;
-  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t===b));
-  document.querySelectorAll(".view").forEach(v=>v.classList.remove("on"));
-  document.getElementById("v-"+b.dataset.v).classList.add("on");
-  if(b.dataset.v==="board")renderBoard();
-});
-document.getElementById("addko").addEventListener("click",()=>{R.koGames.push({round:"R32",a:"",b:"",winner:""});renderCommKO();markDirty();});
-document.getElementById("export").addEventListener("click",exportFile);
-document.getElementById("copy").addEventListener("click",copyResults);
-document.getElementById("import").addEventListener("change",e=>{if(e.target.files[0])importFile(e.target.files[0]);e.target.value="";});
-document.getElementById("foot").innerHTML="Static site · no backend. Results live in <b style='color:#eef2f6'>results.js</b> — the file everyone’s dashboard reads. Update it via Commissioner Mode → Export, or edit it directly and push to GitHub.";
-renderAll();
-</script>
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Group Stage of Death — WC26 Fantasy</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Hanken+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --bg:#0b0d10; --panel:#13171c; --panel2:#181d24; --line:#262d36;
-    --ink:#eef2f6; --mut:#8b97a6; --mut2:#5c6775;
-    --acc:#c6ff3d; --acc-dim:#9bcc26;
-    --Luke:#4c9bff; --Grant:#ff5b5b; --Cam:#19d28a; --Peter:#ffb020;
-    --gold:#ffd34d;
-    --mono:"IBM Plex Mono",ui-monospace,monospace;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0}
-  body{
-    background:
-      radial-gradient(1100px 520px at 82% -8%, rgba(198,255,61,.10), transparent 60%),
-      radial-gradient(900px 600px at -5% 5%, rgba(76,155,255,.10), transparent 55%),
-      var(--bg);
-    color:var(--ink);
-    font-family:"Hanken Grotesk",system-ui,sans-serif;
-    -webkit-font-smoothing:antialiased;
-    min-height:100vh;
-  }
-  body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.035;z-index:0;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
-  .wrap{max-width:1080px;margin:0 auto;padding:28px 20px 80px;position:relative;z-index:1}
-
-  /* header */
-  header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap;
-    border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:6px}
-  .brand .kick{font-family:var(--mono);font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--acc);margin:0 0 6px}
-  .brand h1{font-family:"Anton",sans-serif;font-weight:400;letter-spacing:.01em;line-height:.92;
-    margin:0;font-size:clamp(34px,7vw,68px);text-transform:uppercase}
-  .brand h1 em{font-style:normal;color:var(--acc)}
-  .meta{text-align:right;font-family:var(--mono);font-size:11px;color:var(--mut);line-height:1.7}
-  .meta b{color:var(--ink)}
-  .pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--mut);
-    font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase}
-
-  /* tabs */
-  nav.tabs{display:flex;gap:6px;margin:22px 0 24px;flex-wrap:wrap}
-  .tab{appearance:none;background:var(--panel);border:1px solid var(--line);color:var(--mut);
-    font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;
-    padding:9px 15px;border-radius:10px;cursor:pointer;transition:.15s}
-  .tab:hover{color:var(--ink);border-color:#3a4452}
-  .tab.on{background:var(--acc);color:#0b0d10;border-color:var(--acc);font-weight:700}
-
-  .view{display:none;animation:rise .4s ease both}
-  .view.on{display:block}
-  @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-
-  /* leaderboard */
-  .board{display:flex;flex-direction:column;gap:12px}
-  .row{position:relative;display:grid;grid-template-columns:46px 1fr auto;gap:16px;align-items:center;
-    background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px;overflow:hidden}
-  .row::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--pc)}
-  .row .rk{font-family:"Anton",sans-serif;font-size:30px;color:var(--mut2);text-align:center}
-  .row.first .rk{color:var(--acc)}
-  .who{display:flex;flex-direction:column;gap:9px;min-width:0}
-  .who .nm{font-family:"Anton",sans-serif;font-size:26px;text-transform:uppercase;letter-spacing:.01em;line-height:1}
-  .who .nm span{color:var(--pc)}
-  .bar{height:7px;border-radius:99px;background:#0c1015;overflow:hidden;max-width:420px}
-  .bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--pc),var(--pc));border-radius:99px;
-    width:0;transition:width 1s cubic-bezier(.2,.8,.2,1)}
-  .brk{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--mut)}
-  .brk b{color:var(--ink);font-weight:600}
-  .tot{text-align:right}
-  .tot .pts{font-family:var(--mono);font-weight:700;font-size:40px;line-height:1;letter-spacing:-.02em}
-  .tot .lab{font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--mut);margin-top:4px}
-  .alive{font-family:var(--mono);font-size:11px;color:var(--mut);margin-top:7px}
-  .alive b{color:var(--pc)}
-
-  .note{font-family:var(--mono);font-size:11px;color:var(--mut2);margin-top:18px;line-height:1.6}
-
-  /* groups */
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
-  .gcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 15px}
-  .gcard h3{margin:0 0 11px;font-family:"Anton",sans-serif;font-weight:400;font-size:18px;letter-spacing:.04em;
-    text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
-  .gcard h3 .st{font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--mut2);border:1px solid var(--line);
-    border-radius:99px;padding:2px 7px}
-  .gcard h3 .st.done{color:var(--acc);border-color:var(--acc-dim)}
-  table.std{width:100%;border-collapse:collapse;font-size:13px}
-  table.std td{padding:5px 3px;border-top:1px solid #1d232b;vertical-align:middle}
-  table.std tr:first-child td{border-top:0}
-  .dot{display:inline-block;width:8px;height:8px;border-radius:99px;background:var(--tc);margin-right:7px;vertical-align:middle;flex:0 0 auto}
-  .tn{display:flex;align-items:center;min-width:0}
-  .tn .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .tn .own{font-family:var(--mono);font-size:9px;color:var(--mut2);margin-left:7px;letter-spacing:.06em}
-  td.num{font-family:var(--mono);text-align:right;color:var(--mut);width:26px}
-  td.pt{font-family:var(--mono);text-align:right;font-weight:700;width:26px}
-  tr.adv td.pt{color:var(--acc)}
-  tr.adv .dot{box-shadow:0 0 0 3px rgba(198,255,61,.12)}
-  .undr{color:var(--mut2);font-style:italic}
-
-  /* knockouts */
-  .korounds{display:flex;flex-direction:column;gap:18px}
-  .koround h3{font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--acc);margin:0 0 10px}
-  .kogame{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);
-    border-radius:11px;padding:10px 13px;margin-bottom:8px;font-size:14px;flex-wrap:wrap}
-  .kogame .side{display:flex;align-items:center;gap:7px}
-  .kogame .side.win{font-weight:700}
-  .kogame .side.win .nm{color:var(--ink)}
-  .kogame .side:not(.win){color:var(--mut2)}
-  .kogame .vs{font-family:var(--mono);font-size:11px;color:var(--mut2)}
-  .kogame .tag{margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--acc);
-    border:1px solid var(--acc-dim);border-radius:99px;padding:2px 9px}
-  .empty{font-family:var(--mono);font-size:12px;color:var(--mut2);padding:14px;border:1px dashed var(--line);border-radius:12px;text-align:center}
-
-  /* commissioner */
-  .cbanner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--panel2);border:1px solid var(--line);
-    border-radius:14px;padding:14px 16px;margin-bottom:18px}
-  .cbanner .live{font-family:var(--mono);font-size:12px;color:var(--mut);flex:1;min-width:220px}
-  .cbanner .live b{color:var(--ink)}
-  .btn{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);
-    font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
-    padding:9px 14px;border-radius:10px;cursor:pointer;transition:.15s}
-  .btn:hover{border-color:#3a4452}
-  .btn.go{background:var(--acc);color:#0b0d10;border-color:var(--acc);font-weight:700}
-  .btn.go.dirty{animation:pulse 1.6s infinite}
-  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(198,255,61,.0)}50%{box-shadow:0 0 0 6px rgba(198,255,61,.12)}}
-  .csec{margin:26px 0 8px;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--mut)}
-  .fix{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);
-    border-radius:10px;padding:8px 11px;margin-bottom:7px;font-size:13px}
-  .fix .t{flex:1;display:flex;align-items:center;min-width:0}
-  .fix .t.away{justify-content:flex-end;text-align:right}
-  .fix input.score{width:42px;text-align:center;background:#0c1015;border:1px solid var(--line);color:var(--ink);
-    font-family:var(--mono);font-size:15px;border-radius:8px;padding:6px 2px}
-  .fix input.score:focus{outline:none;border-color:var(--acc)}
-  .fix .dash{color:var(--mut2);font-family:var(--mono)}
-  select,.csel{background:#0c1015;border:1px solid var(--line);color:var(--ink);font-family:var(--mono);
-    font-size:13px;border-radius:8px;padding:8px 10px}
-  select:focus{outline:none;border-color:var(--acc)}
-  .korow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);
-    border-radius:10px;padding:10px 12px;margin-bottom:8px}
-  .korow .x{margin-left:auto;color:var(--Grant);cursor:pointer;font-family:var(--mono);font-size:12px;border:1px solid #3a2630;
-    border-radius:8px;padding:6px 10px;background:transparent}
-  .grp2{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
-  .io{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
-  label.file{display:inline-block}
-  label.file input{display:none}
-  footer{margin-top:42px;border-top:1px solid var(--line);padding-top:16px;font-family:var(--mono);
-    font-size:11px;color:var(--mut2);line-height:1.7}
-  a{color:var(--acc-dim)}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <header class="top">
-    <div class="brand">
-      <p class="kick">World Cup 2026 · Winner Takes All</p>
-      <h1>Group Stage<br>of <em>Death</em></h1>
-    </div>
-    <div class="meta">
-      <span class="pill">Live Fantasy Tracker</span><br>
-      <b>Jun 11 – Jul 19, 2026</b><br>
-      USA · Canada · Mexico<br>
-      48 teams · 4 managers
-    </div>
-  </header>
-
-  <nav class="tabs" id="tabs">
-    <button class="tab on" data-v="board">Standings</button>
-    <button class="tab" data-v="groups">Groups</button>
-    <button class="tab" data-v="ko">Knockouts</button>
-    <button class="tab" data-v="commish">Commissioner</button>
-  </nav>
-
-  <section class="view on" id="v-board">
-    <div class="board" id="board"></div>
-    <p class="note" id="boardnote"></p>
-  </section>
-
-  <section class="view" id="v-groups">
-    <div class="grid" id="groups"></div>
-  </section>
-
-  <section class="view" id="v-ko">
-    <div class="korounds" id="korounds"></div>
-  </section>
-
-  <section class="view" id="v-commish">
-    <div class="cbanner">
-      <div class="live" id="clive">Enter results below — they score instantly.</div>
-      <button class="btn go" id="export">Export results.js</button>
-      <label class="file"><input type="file" id="import" accept=".js,.json,.txt"><span class="btn">Import</span></label>
-      <button class="btn" id="copy">Copy</button>
-    </div>
-    <div class="csec">Group Stage — enter final scores</div>
-    <div class="grp2" id="commGroups"></div>
-    <div class="csec">Knockout Results — winner gets 5 pts</div>
-    <div id="commKO"></div>
-    <div style="margin-top:10px"><button class="btn" id="addko">+ Add knockout match</button></div>
-    <div class="csec">Awards</div>
-    <div class="korow">
-      <span>Golden Boot — team of the top scorer</span>
-      <select id="gb"></select>
-      <span style="font-family:var(--mono);color:var(--mut2)">+5</span>
-    </div>
-    <div class="korow">
-      <span>3rd Place playoff winner</span>
-      <select id="third"></select>
-      <span style="font-family:var(--mono);color:var(--mut2)">+3</span>
-    </div>
-  </section>
-
-  <footer id="foot"></footer>
-</div>
-
-<script>
-/* ========================= THE DRAFT (fixed) ========================= */
-const SCORING = { groupWin:3, groupDraw:1, advance:5, koWin:5, goldenBoot:5, thirdPlace:3 };
-const PLAYERS = {
-  Luke:{color:"var(--Luke)", c:"#4c9bff"},
-  Grant:{color:"var(--Grant)", c:"#ff5b5b"},
-  Cam:{color:"var(--Cam)", c:"#19d28a"},
-  Peter:{color:"var(--Peter)", c:"#ffb020"}
-};
-// team : { owner (or null), group }
-const TEAMS = {
-  "Mexico":{o:"Peter",g:"A"},"South Korea":{o:"Luke",g:"A"},"South Africa":{o:"Cam",g:"A"},"Czechia":{o:"Grant",g:"A"},
-  "Canada":{o:"Grant",g:"B"},"Switzerland":{o:"Cam",g:"B"},"Qatar":{o:"Cam",g:"B"},"Bosnia":{o:"Cam",g:"B"},
-  "Brazil":{o:"Peter",g:"C"},"Morocco":{o:"Luke",g:"C"},"Scotland":{o:"Luke",g:"C"},"Haiti":{o:"Luke",g:"C"},
-  "USA":{o:"Cam",g:"D"},"Australia":{o:null,g:"D"},"Paraguay":{o:"Grant",g:"D"},"Turkey":{o:"Luke",g:"D"},
-  "Germany":{o:"Luke",g:"E"},"Ecuador":{o:"Cam",g:"E"},"Ivory Coast":{o:"Peter",g:"E"},"Curacao":{o:"Grant",g:"E"},
-  "Netherlands":{o:"Grant",g:"F"},"Japan":{o:"Peter",g:"F"},"Tunisia":{o:"Peter",g:"F"},"Sweden":{o:"Luke",g:"F"},
-  "Belgium":{o:"Grant",g:"G"},"Iran":{o:"Grant",g:"G"},"Egypt":{o:"Luke",g:"G"},"New Zealand":{o:"Peter",g:"G"},
-  "Spain":{o:"Grant",g:"H"},"Cape Verde":{o:"Peter",g:"H"},"Uruguay":{o:"Peter",g:"H"},"Saudi Arabia":{o:"Cam",g:"H"},
-  "France":{o:"Luke",g:"I"},"Senegal":{o:"Cam",g:"I"},"Norway":{o:"Peter",g:"I"},"Iraq":{o:"Grant",g:"I"},
-  "Argentina":{o:"Cam",g:"J"},"Algeria":{o:"Grant",g:"J"},"Austria":{o:"Peter",g:"J"},"Jordan":{o:"Cam",g:"J"},
-  "Portugal":{o:"Cam",g:"K"},"DR Congo":{o:"Luke",g:"K"},"Uzbekistan":{o:"Grant",g:"K"},"Colombia":{o:"Luke",g:"K"},
-  "England":{o:"Peter",g:"L"},"Croatia":{o:"Cam",g:"L"},"Ghana":{o:"Grant",g:"L"},"Panama":{o:"Luke",g:"L"}
-};
-const GROUP_LETTERS = ["A","B","C","D","E","F","G","H","I","J","K","L"];
-
-/* groups -> ordered team list */
-const GROUPS = {};
-GROUP_LETTERS.forEach(L=>GROUPS[L]=[]);
-Object.keys(TEAMS).forEach(t=>GROUPS[TEAMS[t].g].push(t));
-
-/* 6 round-robin fixtures per group, canonical order */
-const PAIRS=[[0,1],[2,3],[0,2],[3,1],[3,0],[1,2]];
-function fixtures(L){const t=GROUPS[L];return PAIRS.map(([i,j])=>({home:t[i],away:t[j],key:`${L}|${t[i]}|${t[j]}`}));}
-
-/* ========================= STATE ========================= */
-let R = window.WC_RESULTS || {groupGames:{},koGames:[],goldenBoot:null,thirdPlace:null};
-R.groupGames=R.groupGames||{}; R.koGames=R.koGames||[]; let dirty=false;
-const ownerColor = t => { const o=TEAMS[t]?.o; return o?PLAYERS[o].color:"var(--mut2)"; };
-
-/* ========================= COMPUTE ========================= */
-function groupStandings(L){
-  const rows={}; GROUPS[L].forEach(t=>rows[t]={team:t,pl:0,w:0,d:0,l:0,gf:0,ga:0,gd:0,pts:0});
-  let played=0;
-  fixtures(L).forEach(f=>{
-    const r=R.groupGames[f.key];
-    if(!r||r.hg===""||r.ag===""||r.hg==null||r.ag==null) return;
-    const hg=+r.hg, ag=+r.ag; if(Number.isNaN(hg)||Number.isNaN(ag))return;
-    played++;
-    const H=rows[f.home],A=rows[f.away];
-    H.pl++;A.pl++;H.gf+=hg;H.ga+=ag;A.gf+=ag;A.ga+=hg;
-    if(hg>ag){H.w++;A.l++;H.pts+=3;}
-    else if(ag>hg){A.w++;H.l++;A.pts+=3;}
-    else {H.d++;A.d++;H.pts++;A.pts++;}
-  });
-  Object.values(rows).forEach(r=>r.gd=r.gf-r.ga);
-  const ranked=Object.values(rows).sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf||a.team.localeCompare(b.team));
-  return {ranked,played,complete:played===6};
-}
-function allGroupsComplete(){return GROUP_LETTERS.every(L=>groupStandings(L).complete);}
-
-function advancers(){
-  // top 2 of each complete group clinch; best 8 thirds resolve when ALL groups done
-  const set=new Set(); const thirds=[];
-  let everyDone=allGroupsComplete();
-  GROUP_LETTERS.forEach(L=>{
-    const s=groupStandings(L);
-    if(s.complete){ set.add(s.ranked[0].team); set.add(s.ranked[1].team); thirds.push(s.ranked[2]); }
-  });
-  let bestThirds=[];
-  if(everyDone){
-    bestThirds=[...thirds].sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf).slice(0,8).map(r=>r.team);
-    bestThirds.forEach(t=>set.add(t));
-  }
-  return {set,bestThirds:new Set(bestThirds),thirdsResolved:everyDone};
-}
-
-function eliminated(){ // KO losers
-  const out=new Set();
-  R.koGames.forEach(g=>{ if(g.winner){ const loser=g.winner===g.a?g.b:g.a; if(loser)out.add(loser);} });
-  return out;
-}
-
-function scores(){
-  const A=advancers().set, out=eliminated();
-  const S={}; Object.keys(PLAYERS).forEach(p=>S[p]={total:0,gw:0,dr:0,adv:0,ko:0,gb:0,third:0,advanced:0,alive:0});
-  // group win / draw points (live, per played game)
-  GROUP_LETTERS.forEach(L=>fixtures(L).forEach(f=>{
-    const r=R.groupGames[f.key]; if(!r)return; const hg=+r.hg,ag=+r.ag;
-    if(r.hg===""||r.ag===""||r.hg==null||r.ag==null||Number.isNaN(hg)||Number.isNaN(ag))return;
-    const ho=TEAMS[f.home].o, ao=TEAMS[f.away].o;
-    if(hg>ag){ if(ho){S[ho].gw+=SCORING.groupWin;} }
-    else if(ag>hg){ if(ao){S[ao].gw+=SCORING.groupWin;} }
-    else { if(ho)S[ho].dr+=SCORING.groupDraw; if(ao)S[ao].dr+=SCORING.groupDraw; }
-  }));
-  // advancement
-  A.forEach(t=>{ const o=TEAMS[t].o; if(o)S[o].adv+=SCORING.advance; });
-  // KO wins
-  R.koGames.forEach(g=>{ if(g.winner){ const o=TEAMS[g.winner]?.o; if(o)S[o].ko+=SCORING.koWin; } });
-  // awards
-  if(R.goldenBoot){const o=TEAMS[R.goldenBoot]?.o; if(o)S[o].gb+=SCORING.goldenBoot;}
-  if(R.thirdPlace){const o=TEAMS[R.thirdPlace]?.o; if(o)S[o].third+=SCORING.thirdPlace;}
-  // alive / advanced counts
-  A.forEach(t=>{const o=TEAMS[t].o; if(o){S[o].advanced++; if(!out.has(t))S[o].alive++;}});
-  Object.keys(S).forEach(p=>{const x=S[p]; x.total=x.gw+x.dr+x.adv+x.ko+x.gb+x.third;});
-  return S;
-}
-
-/* ========================= RENDER ========================= */
-function renderBoard(){
-  const S=scores();
-  const order=Object.keys(PLAYERS).sort((a,b)=>S[b].total-S[a].total);
-  const max=Math.max(1,...order.map(p=>S[p].total));
-  const el=document.getElementById("board"); el.innerHTML="";
-  order.forEach((p,i)=>{
-    const x=S[p];
-    const row=document.createElement("div");
-    row.className="row"+(i===0&&x.total>0?" first":"");
-    row.style.setProperty("--pc",PLAYERS[p].color);
-    row.innerHTML=`
-      <div class="rk">${i+1}</div>
-      <div class="who">
-        <div class="nm"><span>${p}</span></div>
-        <div class="bar"><i style="width:${(x.total/max*100).toFixed(1)}%"></i></div>
-        <div class="brk">
-          <span>Group W <b>${x.gw}</b></span><span>Draws <b>${x.dr}</b></span>
-          <span>Advance <b>${x.adv}</b></span><span>KO wins <b>${x.ko}</b></span>
-          <span>Golden Boot <b>${x.gb}</b></span><span>3rd <b>${x.third}</b></span>
-        </div>
-        <div class="alive">Teams advanced <b>${x.advanced}</b> · still alive <b>${x.alive}</b></div>
-      </div>
-      <div class="tot"><div class="pts">${x.total}</div><div class="lab">Points</div></div>`;
     el.appendChild(row);
   });
   // animate bars
@@ -881,7 +504,7 @@ function renderBoard(){
   document.getElementById("boardnote").innerHTML =
     `Scoring · group win ${SCORING.groupWin} · draw ${SCORING.groupDraw} · advance ${SCORING.advance} · each knockout win ${SCORING.koWin} · Golden Boot ${SCORING.goldenBoot} · 3rd place ${SCORING.thirdPlace}.<br>`+
     (adv.thirdsResolved? "All groups complete — best-third places resolved." : "Best-third-place spots resolve once every group has played all six games.")+
-    ` Australia went undrafted, so its points belong to no one.`;
+    ` Win % from 10,000-run Monte Carlo simulation, updated live as results come in.`;
 }
 
 function renderGroups(){
@@ -964,7 +587,7 @@ function renderCommGroups(){
 }
 function renderCommKO(){
   const host=document.getElementById("commKO"); host.innerHTML="";
-  if(!R.koGames.length){host.innerHTML=`<div class="empty">No matches yet. Use “Add knockout match”.</div>`;}
+  if(!R.koGames.length){host.innerHTML=`<div class="empty">No matches yet. Use "Add knockout match".</div>`;}
   R.koGames.forEach((g,idx)=>{
     const row=document.createElement("div"); row.className="korow";
     row.innerHTML=`
@@ -1048,7 +671,7 @@ document.getElementById("addko").addEventListener("click",()=>{R.koGames.push({r
 document.getElementById("export").addEventListener("click",exportFile);
 document.getElementById("copy").addEventListener("click",copyResults);
 document.getElementById("import").addEventListener("change",e=>{if(e.target.files[0])importFile(e.target.files[0]);e.target.value="";});
-document.getElementById("foot").innerHTML="Static site · no backend. Results live in <b style='color:#eef2f6'>results.js</b> — the file everyone’s dashboard reads. Update it via Commissioner Mode → Export, or edit it directly and push to GitHub.";
+document.getElementById("foot").innerHTML="Static site · no backend. Results live in <b style='color:#eef2f6'>results.js</b> — the file everyone's dashboard reads. Update it via Commissioner Mode → Export, or edit it directly and push to GitHub.";
 renderAll();
 </script>
 </body>
