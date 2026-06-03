@@ -210,7 +210,6 @@
   <section class="view" id="v-ko">
     <div class="bkt-hdr" id="bkthdr"></div>
     <div class="bkt-outer"><div class="bkt" id="bktroot"></div></div>
-    <div class="bkt-third-row" id="bktthirdrow"></div>
     <div class="bkt-sep"></div>
     <div class="korounds" id="korounds"></div>
   </section>
@@ -806,27 +805,22 @@ function renderBracket(){
     });
     return wrap;
   }
-  rounds.forEach(({label,matches,dates})=>{
+  // Render R32 → SF columns normally
+  rounds.slice(0,-1).forEach(({matches,dates})=>{
     const col=document.createElement('div'); col.className='bkt-round';
     matches.forEach((m,i)=>col.appendChild(makeMatchEl(m,dates[i])));
     host.appendChild(col);
   });
+  // Final column: Final centered, 3rd place pinned to bottom
+  const finCol=document.createElement('div'); finCol.className='bkt-round'; finCol.style.justifyContent='flex-start';
+  const topSpacer=document.createElement('div'); topSpacer.style.flex='1'; finCol.appendChild(topSpacer);
+  finCol.appendChild(makeMatchEl(fin[0],KO_DATES.fin[0]));
+  const btm=document.createElement('div'); btm.style.cssText='flex:1;display:flex;flex-direction:column;justify-content:flex-end';
+  const tLbl=document.createElement('div'); tLbl.className='bkt-third-label'; tLbl.textContent='3rd Place';
+  btm.appendChild(tLbl); btm.appendChild(makeMatchEl(third[0],KO_DATES.third[0]));
+  finCol.appendChild(btm); host.appendChild(finCol);
   const hdr=document.getElementById("bkthdr");
   if(hdr) hdr.innerHTML=rounds.map(r=>`<div class="bkt-hlabel">${r.label}</div>`).join('');
-  // Third place row — aligned under SF column
-  const trow=document.getElementById("bktthirdrow"); if(!trow)return; trow.innerHTML='';
-  // blank spacers for R32,R16,QF columns then SF label + match + empty Final
-  ['','','','3rd Place'].forEach((lbl,i)=>{
-    const cell=document.createElement('div'); cell.style.cssText='flex:1;min-width:110px';
-    if(i===3){
-      cell.innerHTML=`<div class="bkt-third-label">${lbl}</div>`;
-      cell.appendChild(makeMatchEl(third[0],KO_DATES.third[0]));
-    }
-    trow.appendChild(cell);
-  });
-  // empty Final spacer
-  const fin2=document.createElement('div'); fin2.style.cssText='flex:1;min-width:110px';
-  trow.appendChild(fin2);
 }
 
 /* ----- commissioner ----- */
