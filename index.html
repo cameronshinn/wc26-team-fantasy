@@ -120,9 +120,9 @@
   .bkt-outer{overflow-x:auto;padding-bottom:8px}
   .bkt-hdr{display:flex;gap:2px;margin-bottom:6px}
   .bkt-hlabel{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
-    color:var(--acc);text-align:center;flex:1;min-width:110px}
-  .bkt{display:flex;gap:2px;height:832px}
-  .bkt-round{display:flex;flex-direction:column;justify-content:space-around;flex:1;min-width:110px}
+    color:var(--acc);text-align:center;flex:0 0 130px}
+  .bkt{display:flex;gap:8px;height:832px}
+  .bkt-round{display:flex;flex-direction:column;justify-content:space-around;flex:0 0 130px}
   .bkt-match{background:var(--panel);border:1px solid var(--line);border-radius:8px;margin:2px 3px;overflow:hidden}
   .bkt-team{padding:4px 7px;font-size:11px;display:flex;align-items:center;gap:5px;overflow:hidden}
   .bkt-team+.bkt-team{border-top:1px solid rgba(255,255,255,.05)}
@@ -134,7 +134,7 @@
     padding:2px 4px;border-bottom:1px solid rgba(255,255,255,.05);letter-spacing:.05em}
   .bkt-third-row{display:flex;gap:2px;margin-top:10px}
   .bkt-third-label{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
-    color:var(--mut);flex:1;min-width:110px;text-align:center;padding-top:4px}
+    color:var(--acc);text-align:center;padding-bottom:4px}
   .bkt-sep{border-top:1px solid var(--line);margin:22px 0 10px}
 
   /* commissioner */
@@ -906,9 +906,7 @@ function _renderLiveTally(S){
   }).join(" · ");
 }
 function liveTally(){
-  const S=scores();
-  _renderLiveTally(S);
-  // Recalculate odds 400ms after typing stops, then re-render
+  // Delay render until simulation completes so points and odds update together
   clearTimeout(_oddsTimer);
   _oddsTimer=setTimeout(()=>{ getSimOdds(); _renderLiveTally(scores()); }, 400);
 }
