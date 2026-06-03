@@ -171,9 +171,9 @@
 
   <nav class="tabs" id="tabs">
     <button class="tab on" data-v="board">Standings</button>
+    <button class="tab" data-v="commish">Matches</button>
     <button class="tab" data-v="groups">Groups</button>
     <button class="tab" data-v="ko">Knockouts</button>
-    <button class="tab" data-v="commish">Commissioner</button>
   </nav>
 
   <section class="view on" id="v-board">
@@ -750,7 +750,7 @@ function _renderLiveTally(S){
   const order=Object.keys(PLAYERS).sort((a,b)=>S[b].total-S[a].total);
   document.getElementById("clive").innerHTML="Live: "+order.map((p,i)=>{
     const pct=_simOdds?` <span style="opacity:.55">(${(_simOdds[p]*100).toFixed(1)}%)</span>`:'';
-    return `${i+1}. <b>${p}</b> ${S[p].total}${pct}`;
+    return `${i+1}. <b style="color:${PLAYERS[p].color}">${p}</b> ${S[p].total}${pct}`;
   }).join(" · ");
 }
 function liveTally(){
