@@ -116,6 +116,21 @@
     border:1px solid var(--acc-dim);border-radius:99px;padding:2px 9px}
   .empty{font-family:var(--mono);font-size:12px;color:var(--mut2);padding:14px;border:1px dashed var(--line);border-radius:12px;text-align:center}
 
+  /* bracket */
+  .bkt-outer{overflow-x:auto;padding-bottom:8px}
+  .bkt-hdr{display:flex;gap:2px;margin-bottom:6px}
+  .bkt-hlabel{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--acc);text-align:center;flex:1;min-width:110px}
+  .bkt{display:flex;gap:2px;height:832px}
+  .bkt-round{display:flex;flex-direction:column;justify-content:space-around;flex:1;min-width:110px}
+  .bkt-match{background:var(--panel);border:1px solid var(--line);border-radius:8px;margin:2px 3px;overflow:hidden}
+  .bkt-team{padding:4px 7px;font-size:11px;display:flex;align-items:center;gap:5px;overflow:hidden}
+  .bkt-team+.bkt-team{border-top:1px solid rgba(255,255,255,.05)}
+  .bkt-team .bkt-tnm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  .bkt-team.won{background:rgba(255,255,255,.05);font-weight:600}
+  .bkt-team.lost{opacity:.3}
+  .bkt-tbd{color:var(--mut2);font-size:10px}
+
   /* commissioner */
   .cbanner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--panel2);border:1px solid var(--line);
     border-radius:14px;padding:14px 16px;margin-bottom:18px}
@@ -172,6 +187,7 @@
 
   <nav class="tabs" id="tabs">
     <button class="tab on" data-v="board">Standings</button>
+    <button class="tab" data-v="bracket">Bracket</button>
     <button class="tab" data-v="commish">Matches</button>
     <button class="tab" data-v="groups">Groups</button>
     <button class="tab" data-v="ko">Knockouts</button>
@@ -180,6 +196,11 @@
   <section class="view on" id="v-board">
     <div class="board" id="board"></div>
     <p class="note" id="boardnote"></p>
+  </section>
+
+  <section class="view" id="v-bracket">
+    <div class="bkt-hdr" id="bkthdr"></div>
+    <div class="bkt-outer"><div class="bkt" id="bktroot"></div></div>
   </section>
 
   <section class="view" id="v-groups">
@@ -716,6 +737,68 @@ function renderKO(){
   });
 }
 
+/* ----- bracket ----- */
+function buildCurrentBracket(){
+  const gW=Array(12).fill(null),gR=Array(12).fill(null),gT={};
+  let allDone=true;
+  GROUP_LETTERS.forEach((L,i)=>{
+    const s=groupStandings(L);
+    if(s.complete){gW[i]=s.ranked[0].team;gR[i]=s.ranked[1].team;gT[L]=s.ranked[2].team;}
+    else allDone=false;
+  });
+  let sv='';
+  if(allDone){
+    const ths=GROUP_LETTERS.map(L=>{const s=groupStandings(L);return{grp:L,pts:s.ranked[2].pts,gd:s.ranked[2].gd,gf:s.ranked[2].gf};});
+    ths.sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
+    sv=THIRD_SEEDING[ths.slice(0,8).map(x=>x.grp).sort().join('')]||'';
+  }
+  const t3=i=>sv[i]?gT[sv[i]]:null;
+  const koW=new Map();
+  R.koGames.forEach(g=>{if(g.winner&&g.a&&g.b){koW.set(g.a+'|'+g.b,g.winner);koW.set(g.b+'|'+g.a,g.winner);}});
+  const kow=(a,b)=>(a&&b)?koW.get(a+'|'+b)||null:null;
+  const r32pairs=[
+    [gR[0],gR[1]],[gW[4],t3(3)],[gW[5],gR[2]],[gR[4],gR[8]],
+    [gW[8],t3(5)],[gW[2],gR[5]],[gW[0],t3(0)],[gW[11],t3(7)],
+    [gW[3],t3(2)],[gW[6],t3(4)],[gW[7],gR[9]],[gR[3],gR[6]],
+    [gW[1],t3(1)],[gW[9],gR[7]],[gW[10],t3(6)],[gR[10],gR[11]],
+  ];
+  const mk=pairs=>pairs.map(([a,b])=>({a,b,winner:kow(a,b)}));
+  const nx=prev=>{const p=[];for(let i=0;i<prev.length;i+=2)p.push([prev[i].winner,prev[i+1].winner]);return mk(p);};
+  const r32=mk(r32pairs),r16=nx(r32),qf=nx(r16),sf=nx(qf),fin=nx(sf);
+  const sfL=sf.map(m=>m.winner&&m.a&&m.b?(m.winner===m.a?m.b:m.a):null);
+  const third=mk([[sfL[0],sfL[1]]]);
+  return{r32,r16,qf,sf,fin,third};
+}
+function renderBracket(){
+  const{r32,r16,qf,sf,fin,third}=buildCurrentBracket();
+  const host=document.getElementById("bktroot"); if(!host)return; host.innerHTML='';
+  const rounds=[
+    {label:"R32",matches:r32},{label:"R16",matches:r16},
+    {label:"QF",matches:qf},{label:"SF",matches:sf},{label:"Final",matches:fin},
+  ];
+  rounds.forEach(({label,matches})=>{
+    const col=document.createElement('div'); col.className='bkt-round';
+    matches.forEach(m=>{
+      const wrap=document.createElement('div'); wrap.className='bkt-match';
+      [m.a,m.b].forEach(team=>{
+        const won=team&&m.winner===team, lost=team&&m.winner&&m.winner!==team;
+        const div=document.createElement('div');
+        div.className='bkt-team'+(won?' won':lost?' lost':'');
+        if(team){
+          div.innerHTML=`<span class="dot" style="--tc:${ownerColor(team)};margin-right:0;flex-shrink:0"></span><span class="bkt-tnm">${team}</span>`;
+        }else{
+          div.innerHTML=`<span class="bkt-tbd">—</span>`;
+        }
+        wrap.appendChild(div);
+      });
+      col.appendChild(wrap);
+    });
+    host.appendChild(col);
+  });
+  const hdr=document.getElementById("bkthdr");
+  if(hdr) hdr.innerHTML=rounds.map(r=>`<div class="bkt-hlabel">${r.label}</div>`).join('');
+}
+
 /* ----- commissioner ----- */
 function teamOptions(sel){
   let o=`<option value="">— none —</option>`;
@@ -839,13 +922,14 @@ function importFile(file){
 }
 
 /* ========================= WIRE-UP ========================= */
-function renderAll(){renderBoard();renderGroups();renderKO();renderCommGroups();renderCommKO();renderAwards();liveTally();}
+function renderAll(){renderBoard();renderBracket();renderGroups();renderKO();renderCommGroups();renderCommKO();renderAwards();liveTally();}
 document.getElementById("tabs").addEventListener("click",e=>{
   const b=e.target.closest(".tab"); if(!b)return;
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t===b));
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("on"));
   document.getElementById("v-"+b.dataset.v).classList.add("on");
   if(b.dataset.v==="board")renderBoard();
+  if(b.dataset.v==="bracket")renderBracket();
 });
 document.getElementById("addko").addEventListener("click",()=>{R.koGames.push({round:"R32",a:"",b:"",winner:""});renderCommKO();markDirty();});
 document.getElementById("export").addEventListener("click",exportFile);
