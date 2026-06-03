@@ -130,6 +130,12 @@
   .bkt-team.won{background:rgba(255,255,255,.05);font-weight:600}
   .bkt-team.lost{opacity:.3}
   .bkt-tbd{color:var(--mut2);font-size:10px}
+  .bkt-date{font-family:var(--mono);font-size:9px;color:var(--mut2);text-align:center;
+    padding:2px 4px;border-bottom:1px solid rgba(255,255,255,.05);letter-spacing:.05em}
+  .bkt-third-row{display:flex;gap:2px;margin-top:10px}
+  .bkt-third-label{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--mut);flex:1;min-width:110px;text-align:center;padding-top:4px}
+  .bkt-sep{border-top:1px solid var(--line);margin:22px 0 10px}
 
   /* commissioner */
   .cbanner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--panel2);border:1px solid var(--line);
@@ -187,10 +193,9 @@
 
   <nav class="tabs" id="tabs">
     <button class="tab on" data-v="board">Standings</button>
-    <button class="tab" data-v="bracket">Bracket</button>
     <button class="tab" data-v="commish">Matches</button>
     <button class="tab" data-v="groups">Groups</button>
-    <button class="tab" data-v="ko">Knockouts</button>
+    <button class="tab" data-v="ko">Knockout</button>
   </nav>
 
   <section class="view on" id="v-board">
@@ -198,16 +203,15 @@
     <p class="note" id="boardnote"></p>
   </section>
 
-  <section class="view" id="v-bracket">
-    <div class="bkt-hdr" id="bkthdr"></div>
-    <div class="bkt-outer"><div class="bkt" id="bktroot"></div></div>
-  </section>
-
   <section class="view" id="v-groups">
     <div class="grid" id="groups"></div>
   </section>
 
   <section class="view" id="v-ko">
+    <div class="bkt-hdr" id="bkthdr"></div>
+    <div class="bkt-outer"><div class="bkt" id="bktroot"></div></div>
+    <div class="bkt-third-row" id="bktthirdrow"></div>
+    <div class="bkt-sep"></div>
     <div class="korounds" id="korounds"></div>
   </section>
 
@@ -312,6 +316,16 @@ const MATCH_DATES={
   "L|England|Croatia":"Jun 17","L|Ghana|Panama":"Jun 17",
   "L|England|Ghana":"Jun 23","L|Panama|Croatia":"Jun 23",
   "L|Panama|England":"Jun 27","L|Croatia|Ghana":"Jun 27",
+};
+
+/* KO match dates by bracket position index */
+const KO_DATES={
+  r32:['Jun 28','Jun 29','Jun 29','Jun 29','Jun 30','Jun 30','Jun 30','Jul 1','Jul 1','Jul 1','Jul 2','Jul 2','Jul 2','Jul 3','Jul 3','Jul 3'],
+  r16:['Jul 4','Jul 4','Jul 5','Jul 5','Jul 6','Jul 6','Jul 7','Jul 7'],
+  qf:['Jul 9','Jul 10','Jul 11','Jul 11'],
+  sf:['Jul 14','Jul 15'],
+  fin:['Jul 19'],
+  third:['Jul 18'],
 };
 
 /* ========================= ELO RATINGS (pre-tournament, from FanDuel odds Jun 2 2026) ========================= */
@@ -773,30 +787,46 @@ function renderBracket(){
   const{r32,r16,qf,sf,fin,third}=buildCurrentBracket();
   const host=document.getElementById("bktroot"); if(!host)return; host.innerHTML='';
   const rounds=[
-    {label:"R32",matches:r32},{label:"R16",matches:r16},
-    {label:"QF",matches:qf},{label:"SF",matches:sf},{label:"Final",matches:fin},
+    {label:"R32",matches:r32,dates:KO_DATES.r32},
+    {label:"R16",matches:r16,dates:KO_DATES.r16},
+    {label:"QF",matches:qf,dates:KO_DATES.qf},
+    {label:"SF",matches:sf,dates:KO_DATES.sf},
+    {label:"Final",matches:fin,dates:KO_DATES.fin},
   ];
-  rounds.forEach(({label,matches})=>{
-    const col=document.createElement('div'); col.className='bkt-round';
-    matches.forEach(m=>{
-      const wrap=document.createElement('div'); wrap.className='bkt-match';
-      [m.a,m.b].forEach(team=>{
-        const won=team&&m.winner===team, lost=team&&m.winner&&m.winner!==team;
-        const div=document.createElement('div');
-        div.className='bkt-team'+(won?' won':lost?' lost':'');
-        if(team){
-          div.innerHTML=`<span class="dot" style="--tc:${ownerColor(team)};margin-right:0;flex-shrink:0"></span><span class="bkt-tnm">${team}</span>`;
-        }else{
-          div.innerHTML=`<span class="bkt-tbd">—</span>`;
-        }
-        wrap.appendChild(div);
-      });
-      col.appendChild(wrap);
+  function makeMatchEl(m,date){
+    const wrap=document.createElement('div'); wrap.className='bkt-match';
+    if(date){const d=document.createElement('div');d.className='bkt-date';d.textContent=date;wrap.appendChild(d);}
+    [m.a,m.b].forEach(team=>{
+      const won=team&&m.winner===team, lost=team&&m.winner&&m.winner!==team;
+      const div=document.createElement('div');
+      div.className='bkt-team'+(won?' won':lost?' lost':'');
+      if(team){div.innerHTML=`<span class="dot" style="--tc:${ownerColor(team)};margin-right:0;flex-shrink:0"></span><span class="bkt-tnm">${team}</span>`;}
+      else{div.innerHTML=`<span class="bkt-tbd">—</span>`;}
+      wrap.appendChild(div);
     });
+    return wrap;
+  }
+  rounds.forEach(({label,matches,dates})=>{
+    const col=document.createElement('div'); col.className='bkt-round';
+    matches.forEach((m,i)=>col.appendChild(makeMatchEl(m,dates[i])));
     host.appendChild(col);
   });
   const hdr=document.getElementById("bkthdr");
   if(hdr) hdr.innerHTML=rounds.map(r=>`<div class="bkt-hlabel">${r.label}</div>`).join('');
+  // Third place row — aligned under SF column
+  const trow=document.getElementById("bktthirdrow"); if(!trow)return; trow.innerHTML='';
+  // blank spacers for R32,R16,QF columns then SF label + match + empty Final
+  ['','','','3rd Place'].forEach((lbl,i)=>{
+    const cell=document.createElement('div'); cell.style.cssText='flex:1;min-width:110px';
+    if(i===3){
+      cell.innerHTML=`<div class="bkt-third-label">${lbl}</div>`;
+      cell.appendChild(makeMatchEl(third[0],KO_DATES.third[0]));
+    }
+    trow.appendChild(cell);
+  });
+  // empty Final spacer
+  const fin2=document.createElement('div'); fin2.style.cssText='flex:1;min-width:110px';
+  trow.appendChild(fin2);
 }
 
 /* ----- commissioner ----- */
@@ -929,7 +959,7 @@ document.getElementById("tabs").addEventListener("click",e=>{
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("on"));
   document.getElementById("v-"+b.dataset.v).classList.add("on");
   if(b.dataset.v==="board")renderBoard();
-  if(b.dataset.v==="bracket")renderBracket();
+  if(b.dataset.v==="ko")renderBracket();
 });
 document.getElementById("addko").addEventListener("click",()=>{R.koGames.push({round:"R32",a:"",b:"",winner:""});renderCommKO();markDirty();});
 document.getElementById("export").addEventListener("click",exportFile);
