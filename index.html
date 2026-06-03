@@ -671,7 +671,13 @@ document.getElementById("addko").addEventListener("click",()=>{R.koGames.push({r
 document.getElementById("export").addEventListener("click",exportFile);
 document.getElementById("copy").addEventListener("click",copyResults);
 document.getElementById("import").addEventListener("change",e=>{if(e.target.files[0])importFile(e.target.files[0]);e.target.value="";});
-document.getElementById("foot").innerHTML="Static site · no backend. Results live in <b style='color:#eef2f6'>results.js</b> — the file everyone's dashboard reads. Update it via Commissioner Mode → Export, or edit it directly and push to GitHub.";
+function fmtTimestamp(iso){
+  const d=new Date(iso);
+  const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${mo[d.getUTCMonth()]} ${d.getUTCDate()} · ${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')} UTC`;
+}
+const updStr=R.lastUpdated?`Results last synced <b style='color:#eef2f6'>${fmtTimestamp(R.lastUpdated)}</b> · `:'';
+document.getElementById("foot").innerHTML=`${updStr}Static site · no backend. Results live in <b style='color:#eef2f6'>results.js</b> — the file everyone's dashboard reads. Update it via Commissioner Mode → Export, or edit it directly and push to GitHub.`;
 renderAll();
 </script>
 </body>

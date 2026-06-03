@@ -13,5 +13,6 @@ window.WC_RESULTS = {
   "groupGames": {},
   "koGames": [],
   "goldenBoot": null,
-  "thirdPlace": null
+  "thirdPlace": null,
+  "lastUpdated": null
 };
