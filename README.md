@@ -30,6 +30,6 @@ The **Copy** button copies the same content to your clipboard if you'd rather pa
 ## Notes
 - Advancement points award automatically: top two of each group clinch as soon as that group finishes;
   the eight best third-place spots resolve once all 12 groups are done.
-- Australia went undrafted, so its results score for nobody.
+- All 48 teams are drafted (12 each across Luke, Grant, Cam, and Peter).
 - Tiebreakers for third-place ranking use points → goal difference → goals for (a simplification of FIFA's
   full tiebreaker list; fine for a pool).
