@@ -129,7 +129,7 @@
   .btn.go.dirty{animation:pulse 1.6s infinite}
   @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(198,255,61,.0)}50%{box-shadow:0 0 0 6px rgba(198,255,61,.12)}}
   .csec{margin:26px 0 8px;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--mut)}
-  .fix{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);
+  .fix{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);
     border-radius:10px;padding:8px 11px;margin-bottom:7px;font-size:13px}
   .fix .t{flex:1;display:flex;align-items:center;min-width:0}
   .fix .t.away{justify-content:flex-end;text-align:right}
@@ -745,9 +745,20 @@ function renderAwards(){
   gb.onchange=e=>{R.goldenBoot=e.target.value||null;markDirty();liveTally();};
   th.onchange=e=>{R.thirdPlace=e.target.value||null;markDirty();liveTally();};
 }
+let _oddsTimer=null;
+function _renderLiveTally(S){
+  const order=Object.keys(PLAYERS).sort((a,b)=>S[b].total-S[a].total);
+  document.getElementById("clive").innerHTML="Live: "+order.map((p,i)=>{
+    const pct=_simOdds?` <span style="opacity:.55">(${(_simOdds[p]*100).toFixed(1)}%)</span>`:'';
+    return `${i+1}. <b>${p}</b> ${S[p].total}${pct}`;
+  }).join(" · ");
+}
 function liveTally(){
-  const S=scores(); const order=Object.keys(PLAYERS).sort((a,b)=>S[b].total-S[a].total);
-  document.getElementById("clive").innerHTML="Live: "+order.map((p,i)=>`${i+1}. <b>${p}</b> ${S[p].total}`).join(" · ");
+  const S=scores();
+  _renderLiveTally(S);
+  // Recalculate odds 400ms after typing stops, then re-render
+  clearTimeout(_oddsTimer);
+  _oddsTimer=setTimeout(()=>{ getSimOdds(); _renderLiveTally(scores()); }, 400);
 }
 function markDirty(){dirty=true;document.getElementById("export").classList.add("dirty");}
 
