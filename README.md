@@ -1,11 +1,14 @@
 # Group Stage of Death — WC26 Fantasy Dashboard
 
+[![Update WC26 Results](https://github.com/cameronshinn/wc26-team-fantasy/actions/workflows/update-results.yml/badge.svg?event=schedule)](https://github.com/cameronshinn/wc26-team-fantasy/actions/workflows/update-results.yml)
+
 A zero-backend dashboard that tracks your World Cup 2026 draft and tallies scores under your house rules
 (3 / group win · 1 / group draw · 5 / advance · 5 / each knockout win · 5 / Golden Boot · 3 / third place).
 
 ## Files
 - `index.html` — the whole app (UI + logic + the draft, which never changes).
-- `results.js` — the **only** file you edit during the tournament. It holds live scores and is the single source of truth every visitor reads.
+- `results.js` — live scores, auto-regenerated during the tournament and committed back to the repo.
+- `scripts/update-results.js` — fetches match results from football-data.org and writes `results.js`.
 
 ## Deploy to GitHub Pages (about 2 minutes)
 1. Create a repo, e.g. `wc26-pool`.
@@ -15,15 +18,26 @@ A zero-backend dashboard that tracks your World Cup 2026 draft and tallies score
 
 (If you'd rather it live at `https://<your-username>.github.io/`, name the repo `<your-username>.github.io`.)
 
-## Updating scores during the tournament
-Two ways — both end with a commit to `results.js`:
+## Live score automation
+`results.js` is kept up to date automatically during the tournament via a GitHub Actions workflow that runs
+every 30 minutes (Jun 11 – Jul 19). When a match finishes, the next scheduled run fetches the result,
+regenerates `results.js`, and commits it — GitHub Pages redeploys automatically.
 
-**Easy (recommended):** open the site → **Commissioner** tab → type in final group scores, add knockout
-results, set the Golden Boot and 3rd-place teams. Click **Export results.js**, then replace the file in your
-repo (drag-drop in GitHub's web UI works) and commit. The leaderboard updates for everyone on refresh.
+**One-time setup:**
+1. Get a free API key at [football-data.org/client/register](https://www.football-data.org/client/register).
+2. Add it as a repository secret: **Settings → Secrets and variables → Actions → New repository secret**
+   - Name: `FOOTBALL_API_KEY`
+   - Value: your key
+3. That's it. You can also trigger a manual run any time from the **Actions** tab.
 
-**Manual:** edit `results.js` directly. Group games are keyed `"GROUP|HOME|AWAY"` — use the exact home/away
-order shown in Commissioner mode.
+**What's automated vs. manual:**
+- Group stage scores, knockout results, and 3rd-place winner — **automatic**.
+- Golden Boot — **manual** (set it in Commissioner Mode once the top scorer is known).
+
+## Manual score entry (fallback)
+If you ever need to override or correct a result, use the **Commissioner** tab on the site:
+type in scores, set the Golden Boot and 3rd-place teams, then click **Export results.js** and
+commit the downloaded file. Any manually set Golden Boot is preserved across automatic updates.
 
 The **Copy** button copies the same content to your clipboard if you'd rather paste into GitHub's editor.
 
