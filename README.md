@@ -1,6 +1,7 @@
 # Group Stage of Death — WC26 Fantasy Dashboard
 
 [![Update WC26 Results](https://github.com/cameronshinn/wc26-team-fantasy/actions/workflows/update-results.yml/badge.svg?event=schedule)](https://github.com/cameronshinn/wc26-team-fantasy/actions/workflows/update-results.yml)
+[![Results Updated](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/cameronshinn/wc26-team-fantasy/main/last-update.json&cacheSeconds=1800)](https://github.com/cameronshinn/wc26-team-fantasy/commits/main/results.js)
 
 A zero-backend dashboard that tracks your World Cup 2026 draft and tallies scores under your house rules
 (3 / group win · 1 / group draw · 5 / advance · 5 / each knockout win · 5 / Golden Boot · 3 / third place).

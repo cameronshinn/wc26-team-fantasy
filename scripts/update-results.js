@@ -202,6 +202,13 @@ window.WC_RESULTS = ${JSON.stringify({groupGames, koGames, goldenBoot: existingG
   const outPath = path.join(__dirname, '..', 'results.js');
   fs.writeFileSync(outPath, output, 'utf8');
   console.log('results.js updated successfully');
+
+  // Write shields.io endpoint badge payload — committed alongside results.js when results change
+  const now = new Date();
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const label = `${months[now.getUTCMonth()]} ${now.getUTCDate()} · ${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')} UTC`;
+  const badge = {schemaVersion: 1, label: 'results updated', message: label, color: 'brightgreen'};
+  fs.writeFileSync(path.join(__dirname, '..', 'last-update.json'), JSON.stringify(badge, null, 2) + '\n', 'utf8');
 }
 
 main().catch(err => {
