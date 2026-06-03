@@ -577,8 +577,9 @@ function scores(){
   // awards
   if(R.goldenBoot){const o=TEAMS[R.goldenBoot]?.o; if(o)S[o].gb+=SCORING.goldenBoot;}
   if(R.thirdPlace){const o=TEAMS[R.thirdPlace]?.o; if(o)S[o].third+=SCORING.thirdPlace;}
-  // alive / advanced counts
-  A.forEach(t=>{const o=TEAMS[t].o; if(o){S[o].advanced++; if(!out.has(t))S[o].alive++;}});
+  // advanced = teams confirmed in R32; alive = all teams not yet KO-eliminated (shows 12 pre-tournament)
+  A.forEach(t=>{const o=TEAMS[t].o; if(o)S[o].advanced++;});
+  Object.keys(TEAMS).forEach(t=>{const o=TEAMS[t].o; if(o&&!out.has(t))S[o].alive++;});
   Object.keys(S).forEach(p=>{const x=S[p]; x.total=x.gw+x.dr+x.adv+x.ko+x.gb+x.third;});
   return S;
 }
