@@ -389,7 +389,7 @@ let _simOdds=null,_simKey='';
 function getSimOdds(){
   const key=JSON.stringify(R);
   if(key===_simKey&&_simOdds)return _simOdds;
-  _simOdds=runMonteCarlo(5000);
+  _simOdds=runMonteCarlo(10000);
   _simKey=key;
   return _simOdds;
 }
