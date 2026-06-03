@@ -223,19 +223,13 @@
     </div>
     <div class="csec">Group Stage — enter final scores</div>
     <div class="grp2" id="commGroups"></div>
-    <div class="csec">Knockout Results — winner gets 5 pts</div>
+    <div class="csec">Knockout Matches</div>
     <div id="commKO"></div>
-    <div style="margin-top:10px"><button class="btn" id="addko">+ Add knockout match</button></div>
     <div class="csec">Awards</div>
     <div class="korow">
       <span>Golden Boot — team of the top scorer</span>
       <select id="gb"></select>
       <span style="font-family:var(--mono);color:var(--mut2)">+5</span>
-    </div>
-    <div class="korow">
-      <span>3rd Place playoff winner</span>
-      <select id="third"></select>
-      <span style="font-family:var(--mono);color:var(--mut2)">+3</span>
     </div>
   </section>
 
@@ -863,44 +857,72 @@ function renderCommGroups(){
 }
 function renderCommKO(){
   const host=document.getElementById("commKO"); host.innerHTML="";
-  if(!R.koGames.length){host.innerHTML=`<div class="empty">No matches yet. Use "Add knockout match".</div>`;}
-  R.koGames.forEach((g,idx)=>{
-    const row=document.createElement("div"); row.className="korow";
-    row.innerHTML=`
-      <select data-i="${idx}" data-f="round">
-        ${["R32","R16","QF","SF","F"].map(r=>`<option value="${r}" ${g.round===r?'selected':''}>${ROUND_NAMES[r]}</option>`).join("")}
-      </select>
-      <select data-i="${idx}" data-f="a">${teamOptions(g.a)}</select>
-      <span class="vs" style="font-family:var(--mono);color:var(--mut2)">vs</span>
-      <select data-i="${idx}" data-f="b">${teamOptions(g.b)}</select>
-      <span style="font-family:var(--mono);color:var(--mut2);font-size:11px">winner</span>
-      <select data-i="${idx}" data-f="winner">
-        <option value="">—</option>
-        ${[g.a,g.b].filter(Boolean).map(t=>`<option value="${t}" ${g.winner===t?'selected':''}>${t}</option>`).join("")}
-      </select>
-      <button class="x" data-del="${idx}">remove</button>`;
-    host.appendChild(row);
+  const{r32,r16,qf,sf,fin,third}=buildCurrentBracket();
+  const resultFor=(a,b)=>{
+    if(!a||!b)return'';
+    const g=R.koGames.find(x=>(x.a===a&&x.b===b)||(x.a===b&&x.b===a));
+    return g?g.winner||'':'';
+  };
+  const rounds=[
+    {label:'Round of 32',key:'R32',matches:r32,dates:KO_DATES.r32},
+    {label:'Round of 16',key:'R16',matches:r16,dates:KO_DATES.r16},
+    {label:'Quarter-finals',key:'QF',matches:qf,dates:KO_DATES.qf},
+    {label:'Semi-finals',key:'SF',matches:sf,dates:KO_DATES.sf},
+    {label:'Final',key:'F',matches:fin,dates:KO_DATES.fin},
+    {label:'3rd Place',key:'3P',matches:third,dates:KO_DATES.third},
+  ];
+  let anyShown=false;
+  rounds.forEach(({label,key,matches,dates})=>{
+    if(!matches.some(m=>m.a||m.b))return;
+    anyShown=true;
+    const sec=document.createElement('div');
+    sec.innerHTML=`<div class="csec" style="margin-top:18px">${label}</div>`;
+    matches.forEach((m,i)=>{
+      if(!m.a&&!m.b)return;
+      const winner=key==='3P'?(R.thirdPlace||''):resultFor(m.a,m.b);
+      const d=dates[i]||'';
+      const aHtml=m.a?`<span class="dot" style="--tc:${ownerColor(m.a)}"></span><span class="nm">${m.a}</span>`:`<span class="nm" style="color:var(--mut2)">TBD</span>`;
+      const bHtml=m.b?`<span class="nm">${m.b}</span><span class="dot" style="--tc:${ownerColor(m.b)};margin-right:0;margin-left:7px"></span>`:`<span class="nm" style="color:var(--mut2)">TBD</span>`;
+      const row=document.createElement('div'); row.className='fix';
+      row.innerHTML=`
+        ${d?`<span class="fixdate">${d}</span>`:''}
+        <span class="t">${aHtml}</span>
+        <span class="dash">–</span>
+        <span class="t away">${bHtml}</span>
+        <select data-a="${m.a||''}" data-b="${m.b||''}" data-key="${key}" style="margin-left:auto" ${m.a&&m.b?'':'disabled'}>
+          <option value="">—</option>
+          ${m.a?`<option value="${m.a}" ${winner===m.a?'selected':''}>${m.a}</option>`:''}
+          ${m.b?`<option value="${m.b}" ${winner===m.b?'selected':''}>${m.b}</option>`:''}
+        </select>`;
+      sec.appendChild(row);
+    });
+    host.appendChild(sec);
   });
-  host.querySelectorAll("select").forEach(s=>s.addEventListener("change",e=>{
-    const i=+e.target.dataset.i,f=e.target.dataset.f;
-    R.koGames[i][f]=e.target.value;
-    if(f==="a"||f==="b"){ if(R.koGames[i].winner!==R.koGames[i].a&&R.koGames[i].winner!==R.koGames[i].b)R.koGames[i].winner=""; renderCommKO(); }
-    markDirty(); liveTally();
-  }));
-  host.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",e=>{
-    R.koGames.splice(+e.target.dataset.del,1); renderCommKO(); markDirty(); liveTally();
+  if(!anyShown)host.innerHTML=`<div class="empty">KO bracket populates once group stage results are entered.</div>`;
+  host.querySelectorAll('select').forEach(sel=>sel.addEventListener('change',e=>{
+    const{a,b,key}=e.target.dataset; const winner=e.target.value;
+    if(key==='3P'){
+      R.thirdPlace=winner||null;
+      const idx=R.koGames.findIndex(g=>(g.a===a&&g.b===b)||(g.a===b&&g.b===a));
+      if(idx>=0)R.koGames[idx].winner=winner||'';
+      else if(winner)R.koGames.push({round:'F',a,b,winner});
+    }else{
+      const idx=R.koGames.findIndex(g=>(g.a===a&&g.b===b)||(g.a===b&&g.b===a));
+      if(idx>=0)R.koGames[idx].winner=winner||'';
+      else if(winner)R.koGames.push({round:key,a,b,winner});
+    }
+    markDirty();liveTally();renderCommKO();renderKO();renderBracket();
   }));
 }
 function renderAwards(){
-  const gb=document.getElementById("gb"), th=document.getElementById("third");
-  gb.innerHTML=teamOptions(R.goldenBoot); th.innerHTML=teamOptions(R.thirdPlace);
+  const gb=document.getElementById("gb");
+  gb.innerHTML=teamOptions(R.goldenBoot);
   gb.onchange=e=>{R.goldenBoot=e.target.value||null;markDirty();liveTally();};
-  th.onchange=e=>{R.thirdPlace=e.target.value||null;markDirty();liveTally();};
 }
 let _oddsTimer=null;
 function _renderLiveTally(S){
   const order=Object.keys(PLAYERS).sort((a,b)=>S[b].total-S[a].total);
-  document.getElementById("clive").innerHTML="Live: "+order.map((p,i)=>{
+  document.getElementById("clive").innerHTML=order.map((p,i)=>{
     const pct=_simOdds?` <span style="opacity:.55">(${(_simOdds[p]*100).toFixed(1)}%)</span>`:'';
     return `${i+1}. <b style="color:${PLAYERS[p].color}">${p}</b> ${S[p].total}${pct}`;
   }).join(" · ");
@@ -953,7 +975,7 @@ document.getElementById("tabs").addEventListener("click",e=>{
   if(b.dataset.v==="board")renderBoard();
   if(b.dataset.v==="ko")renderBracket();
 });
-document.getElementById("addko").addEventListener("click",()=>{R.koGames.push({round:"R32",a:"",b:"",winner:""});renderCommKO();markDirty();});
+
 document.getElementById("export").addEventListener("click",exportFile);
 document.getElementById("copy").addEventListener("click",copyResults);
 document.getElementById("import").addEventListener("change",e=>{if(e.target.files[0])importFile(e.target.files[0]);e.target.value="";});
