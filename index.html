@@ -371,9 +371,11 @@ const THIRD_SEEDING={
   "ABCDEFGL":"CGBDAFLE","ABCDEFGK":"CGBDAFEK","ABCDEFGJ":"CGBDAFEJ","ABCDEFGI":"CGBDAFEI","ABCDEFGH":"HGBCAFDE"
 };
 
+// Module-level seeded RNG — replaced at the start of each runMonteCarlo call
+let _rng=Math.random;
 function simPoisson(lam){
   const L=Math.exp(-lam);let k=0,p=1;
-  do{k++;p*=Math.random();}while(p>L);
+  do{k++;p*=_rng();}while(p>L);
   return Math.min(k-1,8);
 }
 function simGroupGoals(a,b){
@@ -382,19 +384,23 @@ function simGroupGoals(a,b){
 }
 function simKOWin(a,b){
   const d=(ELO[a]||1750)-(ELO[b]||1750);
-  return Math.random()<1/(1+Math.pow(10,-d/400))?a:b;
+  return _rng()<1/(1+Math.pow(10,-d/400))?a:b;
 }
 
 let _simOdds=null,_simKey='';
 function getSimOdds(){
   const key=JSON.stringify(R);
   if(key===_simKey&&_simOdds)return _simOdds;
-  _simOdds=runMonteCarlo(10000);
+  _simOdds=runMonteCarlo(10000,key);
   _simKey=key;
   return _simOdds;
 }
 
-function runMonteCarlo(N){
+function runMonteCarlo(N,seedStr){
+  // Seed xorshift32 from state hash so same inputs always produce same odds
+  let s=0;if(seedStr)for(let i=0;i<seedStr.length;i++)s=Math.imul(31,s)+seedStr.charCodeAt(i)|0;
+  s=(s>>>0)||1;
+  _rng=()=>{s^=s<<13;s^=s>>17;s^=s<<5;return(s>>>0)/4294967296;};
   const wc={};Object.keys(PLAYERS).forEach(p=>wc[p]=0);
   const knownKO=new Map();
   R.koGames.forEach(g=>{
