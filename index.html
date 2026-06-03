@@ -610,11 +610,11 @@ function renderBoard(){
         <div class="nm"><span>${p}</span></div>
         <div class="bar"><i style="width:${(x.total/max*100).toFixed(1)}%"></i></div>
         <div class="brk">
-          <span>Group W <b>${x.gw}</b></span><span>Draws <b>${x.dr}</b></span>
+          <span>Group W <b>${x.gw}</b></span><span>Group D <b>${x.dr}</b></span>
           <span>Advance <b>${x.adv}</b></span><span>KO wins <b>${x.ko}</b></span>
-          <span>Golden Boot <b>${x.gb}</b></span><span>3rd <b>${x.third}</b></span>
+          <span>3rd <b>${x.third}</b></span><span>Golden Boot <b>${x.gb}</b></span>
         </div>
-        <div class="alive">Teams advanced <b>${x.advanced}</b> · still alive <b>${x.alive}</b></div>
+        <div class="alive">Teams advanced <b>${x.advanced}</b> · Still alive <b>${x.alive}</b></div>
       </div>
       <div class="tot">
         <div class="pts">${x.total}</div><div class="lab">Points</div>
