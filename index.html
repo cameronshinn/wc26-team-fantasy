@@ -23,6 +23,7 @@
       radial-gradient(1100px 520px at 82% -8%, rgba(198,255,61,.10), transparent 60%),
       radial-gradient(900px 600px at -5% 5%, rgba(76,155,255,.10), transparent 55%),
       var(--bg);
+    background-attachment: fixed, fixed, scroll;
     color:var(--ink);
     font-family:"Hanken Grotesk",system-ui,sans-serif;
     -webkit-font-smoothing:antialiased;
@@ -98,6 +99,7 @@
   .tn .own{font-family:var(--mono);font-size:9px;color:var(--mut2);margin-left:7px;letter-spacing:.06em}
   td.num{font-family:var(--mono);text-align:right;color:var(--mut);width:26px}
   td.pt{font-family:var(--mono);text-align:right;font-weight:700;width:26px}
+  td.adv-pct{font-family:var(--mono);text-align:right;width:36px;font-size:10px;padding-right:2px}
   tr.adv td.pt{color:var(--acc)}
   tr.adv .dot{box-shadow:0 0 0 3px rgba(198,255,61,.12)}
   .undr{color:var(--mut2);font-style:italic}
@@ -117,7 +119,7 @@
   .empty{font-family:var(--mono);font-size:12px;color:var(--mut2);padding:14px;border:1px dashed var(--line);border-radius:12px;text-align:center}
 
   /* odds chart */
-  #oddsroot{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 16px}
+  #oddsroot,#pointsroot{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 16px}
   .odds-note{font-family:var(--mono);font-size:11px;color:var(--mut2);margin-top:14px;line-height:1.6}
 
   /* bracket */
@@ -196,16 +198,17 @@
   </header>
 
   <nav class="tabs" id="tabs">
-    <button class="tab on" data-v="board">Standings</button>
+    <button class="tab on" data-v="standings">Standings</button>
     <button class="tab" data-v="odds">Odds</button>
     <button class="tab" data-v="groups">Groups</button>
-    <button class="tab" data-v="ko">Knockout</button>
-    <button class="tab" data-v="commish">Matches</button>
+    <button class="tab" data-v="knockout">Knockout</button>
+    <button class="tab" data-v="matches">Matches</button>
   </nav>
 
-  <section class="view on" id="v-board">
+  <section class="view on" id="v-standings">
     <div class="board" id="board"></div>
     <p class="note" id="boardnote"></p>
+    <div id="pointsroot" style="margin-top:16px"></div>
   </section>
 
   <section class="view" id="v-odds">
@@ -216,14 +219,14 @@
     <div class="grid" id="groups"></div>
   </section>
 
-  <section class="view" id="v-ko">
+  <section class="view" id="v-knockout">
     <div class="bkt-hdr" id="bkthdr"></div>
     <div class="bkt-outer"><div class="bkt" id="bktroot"></div></div>
     <div class="bkt-sep"></div>
     <div class="korounds" id="korounds"></div>
   </section>
 
-  <section class="view" id="v-commish">
+  <section class="view" id="v-matches">
     <div class="cbanner">
       <div class="live" id="clive">Enter results below — they score instantly.</div>
       <button class="btn go" id="export">Export</button>
@@ -248,33 +251,13 @@
 <script>
 /* ========================= THE DRAFT (fixed) ========================= */
 const SCORING = { groupWin:3, groupDraw:1, advance:5, koWin:5, goldenBoot:5, thirdPlace:3 };
-const PLAYERS = {
-  Luke:{color:"var(--Luke)", c:"#4c9bff"},
-  Grant:{color:"var(--Grant)", c:"#ff5b5b"},
-  Cam:{color:"var(--Cam)", c:"#19d28a"},
-  Peter:{color:"var(--Peter)", c:"#ffb020"}
-};
-// team : { owner (or null), group }
-const TEAMS = {
-  "Mexico":{o:"Peter",g:"A"},"South Korea":{o:"Luke",g:"A"},"South Africa":{o:"Cam",g:"A"},"Czechia":{o:"Grant",g:"A"},
-  "Canada":{o:"Grant",g:"B"},"Switzerland":{o:"Cam",g:"B"},"Qatar":{o:"Cam",g:"B"},"Bosnia":{o:"Cam",g:"B"},
-  "Brazil":{o:"Peter",g:"C"},"Morocco":{o:"Luke",g:"C"},"Scotland":{o:"Luke",g:"C"},"Haiti":{o:"Luke",g:"C"},
-  "USA":{o:"Cam",g:"D"},"Australia":{o:"Peter",g:"D"},"Paraguay":{o:"Grant",g:"D"},"Turkey":{o:"Luke",g:"D"},
-  "Germany":{o:"Luke",g:"E"},"Ecuador":{o:"Cam",g:"E"},"Ivory Coast":{o:"Peter",g:"E"},"Curacao":{o:"Grant",g:"E"},
-  "Netherlands":{o:"Grant",g:"F"},"Japan":{o:"Peter",g:"F"},"Tunisia":{o:"Peter",g:"F"},"Sweden":{o:"Luke",g:"F"},
-  "Belgium":{o:"Grant",g:"G"},"Iran":{o:"Grant",g:"G"},"Egypt":{o:"Luke",g:"G"},"New Zealand":{o:"Peter",g:"G"},
-  "Spain":{o:"Grant",g:"H"},"Cape Verde":{o:"Peter",g:"H"},"Uruguay":{o:"Peter",g:"H"},"Saudi Arabia":{o:"Cam",g:"H"},
-  "France":{o:"Luke",g:"I"},"Senegal":{o:"Cam",g:"I"},"Norway":{o:"Peter",g:"I"},"Iraq":{o:"Grant",g:"I"},
-  "Argentina":{o:"Cam",g:"J"},"Algeria":{o:"Grant",g:"J"},"Austria":{o:"Peter",g:"J"},"Jordan":{o:"Cam",g:"J"},
-  "Portugal":{o:"Cam",g:"K"},"DR Congo":{o:"Luke",g:"K"},"Uzbekistan":{o:"Grant",g:"K"},"Colombia":{o:"Luke",g:"K"},
-  "England":{o:"Peter",g:"L"},"Croatia":{o:"Cam",g:"L"},"Ghana":{o:"Grant",g:"L"},"Panama":{o:"Luke",g:"L"}
-};
+/* Players and teams loaded from draft.json at startup */
+let PLAYERS = {};
+let TEAMS = {};
 const GROUP_LETTERS = ["A","B","C","D","E","F","G","H","I","J","K","L"];
 
-/* groups -> ordered team list */
+/* groups -> ordered team list (populated after draft.json loads) */
 const GROUPS = {};
-GROUP_LETTERS.forEach(L=>GROUPS[L]=[]);
-Object.keys(TEAMS).forEach(t=>GROUPS[TEAMS[t].g].push(t));
 
 /* 6 round-robin fixtures per group, canonical order */
 const PAIRS=[[0,1],[2,3],[0,2],[3,1],[3,0],[1,2]];
@@ -333,13 +316,13 @@ const KO_DATES={
 /* Full Odds chart axis — 35 positions: Pre + every match day.
    Only entries with a `label` get text on the x-axis. */
 const CHART_AXIS=[
-  {key:'Pre',label:'Pre'},
+  {key:'Pre'},
   {key:'Jun 11'},{key:'Jun 12'},{key:'Jun 13'},{key:'Jun 14'},{key:'Jun 15'},{key:'Jun 16'},
-  {key:'Jun 17',label:'Round 1'},
+  {key:'Jun 17',label:'Group R1'},
   {key:'Jun 18'},{key:'Jun 19'},{key:'Jun 20'},{key:'Jun 21'},{key:'Jun 22'},
-  {key:'Jun 23',label:'Round 2'},
+  {key:'Jun 23',label:'Group R2'},
   {key:'Jun 24'},{key:'Jun 25'},{key:'Jun 26'},
-  {key:'Jun 27',label:'Groups'},
+  {key:'Jun 27',label:'Group R3'},
   {key:'Jun 28'},{key:'Jun 29'},{key:'Jun 30'},{key:'Jul 1'},{key:'Jul 2'},
   {key:'Jul 3',label:'R32'},
   {key:'Jul 4'},{key:'Jul 5'},{key:'Jul 6'},
@@ -352,19 +335,8 @@ const CHART_AXIS=[
   {key:'Jul 19',label:'Final'},
 ];
 
-/* ========================= ELO RATINGS (pre-tournament, from FanDuel odds Jun 2 2026) ========================= */
-const ELO={
-  "Spain":2090,"France":2080,"England":2045,"Brazil":2030,"Argentina":2030,
-  "Portugal":2010,"Germany":1990,"Netherlands":1955,"Belgium":1905,"Colombia":1885,
-  "Croatia":1885,"Uruguay":1885,"Morocco":1880,"Norway":1875,"Senegal":1845,
-  "Switzerland":1840,"Japan":1840,"USA":1835,"Sweden":1795,"Ivory Coast":1790,
-  "Mexico":1815,"Ecuador":1810,"Austria":1810,"Turkey":1805,"South Korea":1785,
-  "Egypt":1785,"Canada":1785,"Scotland":1780,"Iran":1780,"Czechia":1780,
-  "Ghana":1770,"Algeria":1770,"Bosnia":1760,"Australia":1750,"Tunisia":1740,
-  "Paraguay":1745,"DR Congo":1725,"Saudi Arabia":1720,"Qatar":1720,"South Africa":1710,
-  "Uzbekistan":1710,"Panama":1700,"Jordan":1660,"Iraq":1660,"Cape Verde":1680,
-  "New Zealand":1650,"Haiti":1620,"Curacao":1620
-};
+/* ELO ratings loaded from elo.json at startup */
+let ELO={};
 
 /* ========================= MONTE CARLO SIMULATION ========================= */
 // R32 third-place seeding: key=sorted 8 qualifying groups, value=8-char string
@@ -472,27 +444,137 @@ const THIRD_SEEDING={
   "ABCDEFGL":"CGBDAFLE","ABCDEFGK":"CGBDAFEK","ABCDEFGJ":"CGBDAFEJ","ABCDEFGI":"CGBDAFEI","ABCDEFGH":"HGBCAFDE"
 };
 
+const ELO_NOISE=100; // ±points of uniform noise applied per team per MC iteration
+
 // Module-level seeded RNG — replaced at the start of each runMonteCarlo call
 let _rng=Math.random;
+let _iterElo=null; // per-iteration noisy Elo snapshot; null → use global ELO
+function _elo(t){return(_iterElo?_iterElo[t]:ELO[t])||1750;}
 function simPoisson(lam){
   const L=Math.exp(-lam);let k=0,p=1;
   do{k++;p*=_rng();}while(p>L);
   return Math.min(k-1,8);
 }
 function simGroupGoals(a,b){
-  const d=(ELO[a]||1750)-(ELO[b]||1750);
+  const d=_elo(a)-_elo(b);
   return[simPoisson(1.35*Math.exp(d/350)),simPoisson(1.35*Math.exp(-d/350))];
 }
 function simKOWin(a,b){
-  const d=(ELO[a]||1750)-(ELO[b]||1750);
+  const d=_elo(a)-_elo(b);
   return _rng()<1/(1+Math.pow(10,-d/400))?a:b;
 }
 
+// FIFA group-stage tiebreakers: pts → H2H pts → H2H GD → H2H GF → (recurse on sub-tie) → overall GD → overall GF → alpha
+// mm: Map of "home|away" -> {hg, ag}
+function rankGroup(teams,pts,gd,gf,mm){
+  function getMatch(a,b){
+    const r=mm.get(a+'|'+b);if(r)return{ga:r.hg,gb:r.ag};
+    const s=mm.get(b+'|'+a);if(s)return{ga:s.ag,gb:s.hg};
+    return null;
+  }
+  function h2h(sub){
+    const p={},d={},f={};sub.forEach(t=>{p[t]=0;d[t]=0;f[t]=0;});
+    for(let i=0;i<sub.length;i++)for(let j=i+1;j<sub.length;j++){
+      const r=getMatch(sub[i],sub[j]);if(!r)continue;
+      const[a,b]=[sub[i],sub[j]];
+      if(r.ga>r.gb)p[a]+=3;else if(r.gb>r.ga)p[b]+=3;else{p[a]++;p[b]++;}
+      d[a]+=r.ga-r.gb;d[b]+=r.gb-r.ga;f[a]+=r.ga;f[b]+=r.gb;
+    }
+    return{p,d,f};
+  }
+  function resolve(arr,useH2H){
+    if(arr.length<=1)return arr;
+    if(useH2H){
+      const h=h2h(arr);
+      const s=arr.slice().sort((a,b)=>h.p[b]-h.p[a]||h.d[b]-h.d[a]||h.f[b]-h.f[a]);
+      const out=[];let i=0;
+      while(i<s.length){
+        let j=i+1;
+        while(j<s.length&&h.p[s[j]]===h.p[s[i]]&&h.d[s[j]]===h.d[s[i]]&&h.f[s[j]]===h.f[s[i]])j++;
+        const sub=s.slice(i,j);
+        out.push(...resolve(sub,sub.length<arr.length));
+        i=j;
+      }
+      return out;
+    }
+    return arr.slice().sort((a,b)=>gd[b]-gd[a]||gf[b]-gf[a]||a.localeCompare(b));
+  }
+  const s=teams.slice().sort((a,b)=>pts[b]-pts[a]);
+  const out=[];let i=0;
+  while(i<s.length){
+    let j=i+1;while(j<s.length&&pts[s[j]]===pts[s[i]])j++;
+    out.push(...resolve(s.slice(i,j),true));
+    i=j;
+  }
+  return out;
+}
+
+function computeTeamAdvOdds(N,seedStr){
+  if(allGroupsComplete()){
+    const A=advancers();
+    return Object.fromEntries(Object.keys(TEAMS).map(t=>[t,A.set.has(t)?1:0]));
+  }
+  let s=0;if(seedStr)for(let i=0;i<seedStr.length;i++)s=Math.imul(31,s)+seedStr.charCodeAt(i)|0;
+  s=(s>>>0)||1;
+  _rng=()=>{s^=s<<13;s^=s>>17;s^=s<<5;return(s>>>0)/4294967296;};
+  const adv={};Object.keys(TEAMS).forEach(t=>adv[t]=0);
+  const _mm={};GROUP_LETTERS.forEach(L=>_mm[L]=new Map());
+  for(let n=0;n<N;n++){
+    _iterElo={};Object.keys(ELO).forEach(t=>_iterElo[t]=ELO[t]+(_rng()*2-1)*ELO_NOISE);
+    const tpts={},tgd={},tgf={};
+    Object.keys(TEAMS).forEach(t=>{tpts[t]=0;tgd[t]=0;tgf[t]=0;});
+    GROUP_LETTERS.forEach(L=>{
+      _mm[L].clear();
+      fixtures(L).forEach(f=>{
+        let hg,ag;
+        const kn=R.groupGames[f.key];
+        if(kn&&kn.hg!=null&&kn.ag!=null&&kn.hg!==''&&kn.ag!==''&&!Number.isNaN(+kn.hg)&&!Number.isNaN(+kn.ag)){
+          hg=+kn.hg;ag=+kn.ag;
+        }else{[hg,ag]=simGroupGoals(f.home,f.away);}
+        _mm[L].set(f.home+'|'+f.away,{hg,ag});
+        tgf[f.home]+=hg;tgf[f.away]+=ag;
+        tgd[f.home]+=(hg-ag);tgd[f.away]+=(ag-hg);
+        if(hg>ag)tpts[f.home]+=3;
+        else if(ag>hg)tpts[f.away]+=3;
+        else{tpts[f.home]++;tpts[f.away]++;}
+      });
+    });
+    const allThirds=[];
+    GROUP_LETTERS.forEach(L=>{
+      const ranked=rankGroup(GROUPS[L],tpts,tgd,tgf,_mm[L]);
+      adv[ranked[0]]++;adv[ranked[1]]++;
+      allThirds.push({team:ranked[2],pts:tpts[ranked[2]],gd:tgd[ranked[2]],gf:tgf[ranked[2]]});
+    });
+    allThirds.sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
+    allThirds.slice(0,8).forEach(x=>adv[x.team]++);
+  }
+  Object.keys(adv).forEach(t=>adv[t]/=N);
+  return adv;
+}
+let _teamAdvOdds=null,_teamAdvKey='';
+function getTeamAdvOdds(){
+  const key=JSON.stringify(R.groupGames);
+  if(key===_teamAdvKey&&_teamAdvOdds)return _teamAdvOdds;
+  _teamAdvOdds=computeTeamAdvOdds(2000,key);
+  _teamAdvKey=key;
+  return _teamAdvOdds;
+}
+
 let _simOdds=null,_simKey='';
+function stateKey(r){return JSON.stringify({groupGames:r.groupGames,koGames:r.koGames,goldenBoot:r.goldenBoot,thirdPlace:r.thirdPlace});}
 function getSimOdds(){
-  const key=JSON.stringify(R);
+  const key=stateKey(R);
   if(key===_simKey&&_simOdds)return _simOdds;
-  _simOdds=runMonteCarlo(10000,key);
+  // When the Final is complete, the tournament is over — use exact scores instead of simulation
+  if(R.koGames.some(g=>g.round==='F'&&g.winner)){
+    const S=scores();
+    const totals=Object.fromEntries(Object.keys(PLAYERS).map(p=>[p,S[p].total]));
+    const max=Math.max(...Object.values(totals));
+    const winners=Object.keys(PLAYERS).filter(p=>totals[p]===max);
+    _simOdds=Object.fromEntries(Object.keys(PLAYERS).map(p=>[p,winners.includes(p)?1/winners.length:0]));
+  }else{
+    _simOdds=runMonteCarlo(10000,key);
+  }
   _simKey=key;
   return _simOdds;
 }
@@ -508,19 +590,23 @@ function runMonteCarlo(N,seedStr){
     if(g.winner&&g.a&&g.b){knownKO.set(g.a+'|'+g.b,g.winner);knownKO.set(g.b+'|'+g.a,g.winner);}
   });
 
+  const _mm2={};GROUP_LETTERS.forEach(L=>_mm2[L]=new Map());
   for(let iter=0;iter<N;iter++){
+    _iterElo={};Object.keys(ELO).forEach(t=>_iterElo[t]=ELO[t]+(_rng()*2-1)*ELO_NOISE);
     const S={};Object.keys(PLAYERS).forEach(p=>S[p]=0);
     const tpts={},tgd={},tgf={},tgoals={};
     Object.keys(TEAMS).forEach(t=>{tpts[t]=0;tgd[t]=0;tgf[t]=0;tgoals[t]=0;});
 
     // Group stage — lock in real results, simulate the rest
     GROUP_LETTERS.forEach(L=>{
+      _mm2[L].clear();
       fixtures(L).forEach(f=>{
         let hg,ag;
         const kn=R.groupGames[f.key];
         if(kn&&kn.hg!=null&&kn.ag!=null&&kn.hg!==''&&kn.ag!==''&&!Number.isNaN(+kn.hg)&&!Number.isNaN(+kn.ag)){
           hg=+kn.hg;ag=+kn.ag;
         }else{[hg,ag]=simGroupGoals(f.home,f.away);}
+        _mm2[L].set(f.home+'|'+f.away,{hg,ag});
         tgoals[f.home]+=hg;tgoals[f.away]+=ag;
         tgf[f.home]+=hg;tgf[f.away]+=ag;
         tgd[f.home]+=(hg-ag);tgd[f.away]+=(ag-hg);
@@ -535,7 +621,7 @@ function runMonteCarlo(N,seedStr){
     const gWinners=[],gRunners=[],gThirds={};
     const allThirds=[];
     GROUP_LETTERS.forEach((L,idx)=>{
-      const ranked=GROUPS[L].slice().sort((a,b)=>tpts[b]-tpts[a]||tgd[b]-tgd[a]||tgf[b]-tgf[a]||a.localeCompare(b));
+      const ranked=rankGroup(GROUPS[L],tpts,tgd,tgf,_mm2[L]);
       gWinners.push(ranked[0]);gRunners.push(ranked[1]);gThirds[L]=ranked[2];
       allThirds.push({team:ranked[2],grp:L,pts:tpts[ranked[2]],gd:tgd[ranked[2]],gf:tgf[ranked[2]]});
       const o1=TEAMS[ranked[0]].o,o2=TEAMS[ranked[1]].o;
@@ -627,12 +713,14 @@ const ownerColor = t => { const o=TEAMS[t]?.o; return o?PLAYERS[o].color:"var(--
 /* ========================= COMPUTE ========================= */
 function groupStandings(L){
   const rows={}; GROUPS[L].forEach(t=>rows[t]={team:t,pl:0,w:0,d:0,l:0,gf:0,ga:0,gd:0,pts:0});
+  const mm=new Map();
   let played=0;
   fixtures(L).forEach(f=>{
     const r=R.groupGames[f.key];
     if(!r||r.hg===""||r.ag===""||r.hg==null||r.ag==null) return;
     const hg=+r.hg, ag=+r.ag; if(Number.isNaN(hg)||Number.isNaN(ag))return;
     played++;
+    mm.set(f.home+'|'+f.away,{hg,ag});
     const H=rows[f.home],A=rows[f.away];
     H.pl++;A.pl++;H.gf+=hg;H.ga+=ag;A.gf+=ag;A.ga+=hg;
     if(hg>ag){H.w++;A.l++;H.pts+=3;}
@@ -640,7 +728,9 @@ function groupStandings(L){
     else {H.d++;A.d++;H.pts++;A.pts++;}
   });
   Object.values(rows).forEach(r=>r.gd=r.gf-r.ga);
-  const ranked=Object.values(rows).sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf||a.team.localeCompare(b.team));
+  const ptsM={},gdM={},gfM={};
+  Object.values(rows).forEach(r=>{ptsM[r.team]=r.pts;gdM[r.team]=r.gd;gfM[r.team]=r.gf;});
+  const ranked=rankGroup(GROUPS[L],ptsM,gdM,gfM,mm).map(t=>rows[t]);
   return {ranked,played,complete:played===6};
 }
 function allGroupsComplete(){return GROUP_LETTERS.every(L=>groupStandings(L).complete);}
@@ -740,6 +830,7 @@ function renderBoard(){
 
 function renderGroups(){
   const A=advancers();
+  const advOdds=getTeamAdvOdds();
   const host=document.getElementById("groups"); host.innerHTML="";
   GROUP_LETTERS.forEach(L=>{
     const s=groupStandings(L);
@@ -748,10 +839,17 @@ function renderGroups(){
     s.ranked.forEach((r,idx)=>{
       const advanced=A.set.has(r.team);
       const t=TEAMS[r.team]; const own=t.o?t.o:"—";
+      const pct=advOdds[r.team]??0;
+      let pctCell;
+      if(s.complete){
+        pctCell=advanced?`<td class="adv-pct" style="color:var(--acc)">ADV</td>`:`<td class="adv-pct" style="color:var(--mut2)">—</td>`;
+      }else{
+        pctCell=`<td class="adv-pct" style="color:var(--acc)">${Math.round(pct*100)}%</td>`;
+      }
       rows+=`<tr class="${advanced?'adv':''}">
         <td><div class="tn"><span class="dot" style="--tc:${ownerColor(r.team)}"></span>
           <span class="nm ${t.o?'':'undr'}">${r.team}</span><span class="own">${own}</span></div></td>
-        <td class="num">${r.pl}</td><td class="num">${r.gd>0?'+':''}${r.gd}</td><td class="pt">${r.pts}</td></tr>`;
+        <td class="num">${r.pl}</td><td class="num">${r.gd>0?'+':''}${r.gd}</td><td class="pt">${r.pts}</td>${pctCell}</tr>`;
     });
     card.innerHTML=`<h3>Group ${L}<span class="st ${s.complete?'done':''}">${s.complete?'final':s.played+'/6'}</span></h3>
       <table class="std">${rows}</table>`;
@@ -856,9 +954,9 @@ function renderBracket(){
 }
 
 /* ----- odds history ----- */
-let _oddsHistory=null,_oddsHistoryKey='';
+let _oddsHistory=null,_oddsHistoryKey='',_oddsJobId=0;
 function getOddsHistory(){
-  const key=JSON.stringify(R);
+  const key=stateKey(R);
   if(key===_oddsHistoryKey&&_oddsHistory)return _oddsHistory;
   _oddsHistory=computeOddsHistory();
   _oddsHistoryKey=key;
@@ -866,7 +964,7 @@ function getOddsHistory(){
 }
 function computeOddsHistory(){
   const savedR=R;
-  const N=2000;
+  const N=5000;
   function dateKey(d){
     if(!d)return 999;
     const[mon,day]=d.split(' ');
@@ -900,6 +998,8 @@ function computeOddsHistory(){
     pts.push({key:date,odds:simAt({groupGames:gg,koGames:[],goldenBoot:null,thirdPlace:null})});
   });
   // KO stage: per-day checkpoints — all games on that calendar day must have a winner
+  // _koPairDate is lifted to function scope so the live-point block can scan KO dates too
+  const _koPairDate=new Map();
   if(savedR.koGames.some(g=>g.winner)||savedR.thirdPlace){
     const{r32,r16,qf,sf,fin:finBkt}=buildCurrentBracket();
     // Map each bracket position to its date, and build a date→games index
@@ -914,7 +1014,7 @@ function computeOddsHistory(){
     addRound(qf,KO_DATES.qf,'QF'); addRound(sf,KO_DATES.sf,'SF');
     addRound(finBkt,KO_DATES.fin,'F');
     // Reverse lookup: team-pair → date (both orders)
-    const pairDate=new Map();
+    const pairDate=_koPairDate;
     dateGames.forEach((games,date)=>games.forEach(({a,b})=>{
       pairDate.set(a+'|'+b,date); pairDate.set(b+'|'+a,date);
     }));
@@ -952,11 +1052,70 @@ function computeOddsHistory(){
       })});
     }
   }
+  // When the Final is decided, the pool outcome is certain — compute scores directly
+  // instead of relying on the simulation (which can only approximate via bracket matching)
+  if(savedR.koGames.some(g=>g.round==='F'&&g.winner)){
+    const S=scores(); // R is still savedR here
+    const totals=Object.fromEntries(Object.keys(PLAYERS).map(p=>[p,S[p].total]));
+    const max=Math.max(...Object.values(totals));
+    const winners=Object.keys(PLAYERS).filter(p=>totals[p]===max);
+    const odds=Object.fromEntries(Object.keys(PLAYERS).map(p=>[p,winners.includes(p)?1/winners.length:0.0]));
+    const idx=pts.findIndex(p=>p.key==='Jul 19');
+    if(idx>=0)pts[idx]={key:'Jul 19',odds};
+    else pts.push({key:'Jul 19',odds});
+  }
+  const _axisIdx=Object.fromEntries(CHART_AXIS.map((e,i)=>[e.key,i]));
+  pts.sort((a,b)=>(_axisIdx[a.key]??999)-(_axisIdx[b.key]??999));
+  // Live point: placed at the latest date with any entered data (group, KO, or thirdPlace).
+  // This means: if today's day is fully done → live point AT that day;
+  // if today's day is partial → live point advances to that partial date.
+  // Works for both group stage and KO stage.
+  const hasData=Object.keys(savedR.groupGames).length>0||savedR.koGames.some(g=>g.winner)||!!savedR.thirdPlace;
+  if(hasData){
+    const liveOdds=getSimOdds();
+    let latestDataIdx=-1;
+    Object.keys(savedR.groupGames).forEach(k=>{
+      const di=_axisIdx[MATCH_DATES[k]]??-1;
+      if(di>latestDataIdx)latestDataIdx=di;
+    });
+    savedR.koGames.forEach(g=>{
+      if(!g.winner)return;
+      const d=_koPairDate.get(g.a+'|'+g.b);
+      if(d){const di=_axisIdx[d]??-1;if(di>latestDataIdx)latestDataIdx=di;}
+    });
+    if(savedR.thirdPlace){const di=_axisIdx['Jul 18']??-1;if(di>latestDataIdx)latestDataIdx=di;}
+    if(latestDataIdx>=0){
+      const liveKey=CHART_AXIS[latestDataIdx].key;
+      const ei=pts.findIndex(p=>p.key===liveKey);
+      if(ei>=0)pts[ei]={key:liveKey,odds:liveOdds};
+      else{pts.push({key:liveKey,odds:liveOdds});pts.sort((a,b)=>(_axisIdx[a.key]??999)-(_axisIdx[b.key]??999));}
+    }
+  }
   return pts;
 }
-function renderOdds(){
-  const host=document.getElementById("oddsroot"); if(!host)return;
-  const history=getOddsHistory();
+// Monotone cubic interpolation (Fritsch-Carlson) — no overshoot at any data point
+function monotonePath(pts){
+  const n=pts.length; if(n<2)return '';
+  const dx=[],delta=[],m=new Array(n);
+  for(let i=0;i<n-1;i++){dx[i]=pts[i+1].x-pts[i].x;delta[i]=(pts[i+1].y-pts[i].y)/dx[i];}
+  m[0]=delta[0]; m[n-1]=delta[n-2];
+  for(let i=1;i<n-1;i++){
+    if(delta[i-1]*delta[i]<=0){m[i]=0;}
+    else{const w1=2*dx[i]+dx[i-1],w2=dx[i]+2*dx[i-1];m[i]=(w1+w2)/(w1/delta[i-1]+w2/delta[i]);}
+  }
+  for(let i=0;i<n-1;i++){
+    if(Math.abs(delta[i])<1e-10){m[i]=0;m[i+1]=0;}
+    else{const a=m[i]/delta[i],b=m[i+1]/delta[i],s=a*a+b*b;if(s>9){const t=3/Math.sqrt(s);m[i]=t*a*delta[i];m[i+1]=t*b*delta[i];}}
+  }
+  let d=`M${pts[0].x},${pts[0].y}`;
+  for(let i=0;i<n-1;i++){
+    const c1x=(pts[i].x+dx[i]/3).toFixed(1),c1y=(pts[i].y+m[i]*dx[i]/3).toFixed(1);
+    const c2x=(pts[i+1].x-dx[i]/3).toFixed(1),c2y=(pts[i+1].y-m[i+1]*dx[i]/3).toFixed(1);
+    d+=` C${c1x},${c1y} ${c2x},${c2y} ${pts[i+1].x},${pts[i+1].y}`;
+  }
+  return d;
+}
+function paintOddsChart(host,history){
   const histMap={};history.forEach(h=>histMap[h.key]=h.odds);
   const n=CHART_AXIS.length;
   const W=680,H=260,pL=38,pR=16,pT=16,pB=36;
@@ -965,50 +1124,284 @@ function renderOdds(){
   const ysv=p=>pT+(1-p)*ph;
   const players=Object.keys(PLAYERS);
   let svg=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;font-family:'IBM Plex Mono',monospace">`;
-  // Y gridlines at 0,20,40,60,80,100%
   for(let p=0;p<=1.001;p+=0.2){
     const yy=ysv(p).toFixed(1);
     svg+=`<line x1="${pL}" y1="${yy}" x2="${W-pR}" y2="${yy}" stroke="#1d232b" stroke-width="1"/>`;
     svg+=`<text x="${pL-5}" y="${+yy+4}" fill="#5c6775" font-size="10" text-anchor="end">${Math.round(p*100)}%</text>`;
   }
-  // X axis line
   svg+=`<line x1="${pL}" y1="${pT+ph}" x2="${W-pR}" y2="${pT+ph}" stroke="#262d36" stroke-width="1"/>`;
-  // X axis: tick at every match day, label only at round boundaries
+  const _secCx={};{let _ss=0;CHART_AXIS.forEach((e,i)=>{if(e.label){_secCx[e.key]=(xs(_ss)+xs(i))/2;_ss=i;}});}
   CHART_AXIS.forEach((entry,i)=>{
     const x=xs(i).toFixed(1);
     const hasData=!!histMap[entry.key];
     if(entry.label){
       const col=hasData?'#5c6775':'#2a3340';
-      svg+=`<line x1="${x}" y1="${pT+ph}" x2="${x}" y2="${pT+ph+4}" stroke="${col}" stroke-width="1"/>`;
-      svg+=`<text x="${x}" y="${H-3}" fill="${col}" font-size="9" text-anchor="middle">${entry.label}</text>`;
+      svg+=`<line x1="${x}" y1="${pT+ph}" x2="${x}" y2="${pT+ph+7}" stroke="${col}" stroke-width="1"/>`;
+      svg+=`<text x="${_secCx[entry.key].toFixed(1)}" y="${H-3}" fill="${col}" font-size="9" text-anchor="middle">${entry.label}</text>`;
     }else{
       const col=hasData?'#3a4452':'#1e252e';
       svg+=`<line x1="${x}" y1="${pT+ph}" x2="${x}" y2="${pT+ph+3}" stroke="${col}" stroke-width="1"/>`;
     }
   });
-  // Lines + dots per player — only positions with data
   players.forEach(p=>{
     const col=PLAYERS[p].c;
     const dpts=CHART_AXIS.map((entry,i)=>histMap[entry.key]?{i,v:histMap[entry.key][p]}:null).filter(Boolean);
     if(dpts.length>=2){
-      // Catmull-Rom → cubic bezier smooth path
       const pts2=dpts.map(d=>({x:+xs(d.i).toFixed(1),y:+ysv(d.v).toFixed(1)}));
-      let d=`M${pts2[0].x},${pts2[0].y}`;
-      for(let k=0;k<pts2.length-1;k++){
-        const p0=pts2[Math.max(0,k-1)], p1=pts2[k], p2=pts2[k+1], p3=pts2[Math.min(pts2.length-1,k+2)];
-        const cp1x=(p1.x+(p2.x-p0.x)/6).toFixed(1), cp1y=(p1.y+(p2.y-p0.y)/6).toFixed(1);
-        const cp2x=(p2.x-(p3.x-p1.x)/6).toFixed(1), cp2y=(p2.y-(p3.y-p1.y)/6).toFixed(1);
-        d+=` C${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
-      }
-      svg+=`<path d="${d}" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round"/>`;
+      svg+=`<path d="${monotonePath(pts2)}" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round"/>`;
     }
   });
   svg+=`</svg>`;
-  // Legend sorted by latest known odds
   const last=history[history.length-1];
   const sorted=last?[...players].sort((a,b)=>last.odds[b]-last.odds[a]):[...players];
   const legend=sorted.map(p=>`<span style="color:${PLAYERS[p].c};display:flex;align-items:center;gap:5px"><span style="width:16px;height:2px;background:${PLAYERS[p].c};display:inline-block;border-radius:2px"></span>${p}${last?` ${(last.odds[p]*100).toFixed(1)}%`:''}</span>`).join('');
-  host.innerHTML=`<div style="display:flex;gap:20px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;margin-bottom:12px">${legend}</div>${svg}<p class="odds-note">Win % from 2,000-run Monte Carlo at each matchday snapshot</p>`;
+  host.innerHTML=`<div style="display:flex;gap:20px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;margin-bottom:12px">${legend}</div>${svg}<p class="odds-note">Win % from 5,000-run Monte Carlo at each matchday snapshot</p>`;
+}
+function renderOdds(){
+  const host=document.getElementById("oddsroot"); if(!host)return;
+  // Cache hit — paint immediately
+  const cacheKey=stateKey(R);
+  if(cacheKey===_oddsHistoryKey&&_oddsHistory){paintOddsChart(host,_oddsHistory);return;}
+  const savedR=R;
+  function dk(d){if(!d)return 999;const[mon,day]=d.split(' ');return(mon==='Jul'?100:0)+parseInt(day);}
+  function simAt(state){const prev=R;R=state;try{return runMonteCarlo(5000,stateKey(state));}finally{R=prev;}}
+  // Build checkpoint list (fast — no simulation yet)
+  const cps=[];
+  cps.push({key:'Pre',state:{groupGames:{},koGames:[],goldenBoot:null,thirdPlace:null}});
+  const playedDates=[...new Set(Object.keys(savedR.groupGames).map(k=>MATCH_DATES[k]).filter(Boolean))];
+  playedDates.sort((a,b)=>dk(a)-dk(b));
+  let prevGGkey='';
+  playedDates.forEach(date=>{
+    const allOnDate=Object.keys(MATCH_DATES).filter(k=>MATCH_DATES[k]===date);
+    const allComplete=allOnDate.every(k=>{const r=savedR.groupGames[k];return r&&r.hg!=null&&r.ag!=null&&r.hg!==''&&r.ag!==''&&!Number.isNaN(+r.hg)&&!Number.isNaN(+r.ag);});
+    if(!allComplete)return;
+    const maxDk=dk(date);
+    const gg={};
+    Object.entries(savedR.groupGames).forEach(([k,v])=>{if(dk(MATCH_DATES[k])<=maxDk)gg[k]=v;});
+    const key=JSON.stringify(gg); if(key===prevGGkey)return; prevGGkey=key;
+    cps.push({key:date,state:{groupGames:gg,koGames:[],goldenBoot:null,thirdPlace:null}});
+  });
+  const _koPairDate=new Map();
+  if(savedR.koGames.some(g=>g.winner)||savedR.thirdPlace){
+    const{r32,r16,qf,sf,fin:finBkt}=buildCurrentBracket();
+    const dateGames=new Map();
+    const addRound=(matches,dates,rd)=>matches.forEach((m,i)=>{
+      if(!m.a||!m.b)return; const d=dates[i]; if(!d)return;
+      if(!dateGames.has(d))dateGames.set(d,[]); dateGames.get(d).push({a:m.a,b:m.b,rd});
+    });
+    addRound(r32,KO_DATES.r32,'R32'); addRound(r16,KO_DATES.r16,'R16');
+    addRound(qf,KO_DATES.qf,'QF'); addRound(sf,KO_DATES.sf,'SF');
+    addRound(finBkt,KO_DATES.fin,'F');
+    const pd=_koPairDate;
+    dateGames.forEach((games,date)=>games.forEach(({a,b})=>{pd.set(a+'|'+b,date);pd.set(b+'|'+a,date);}));
+    const sortedKODates=[...dateGames.keys()].sort((a,b)=>dk(a)-dk(b));
+    let prevKOState='';
+    sortedKODates.forEach(date=>{
+      const games=dateGames.get(date);
+      const allComplete=games.every(({a,b})=>{const g=savedR.koGames.find(x=>(x.a===a&&x.b===b)||(x.a===b&&x.b===a));return g&&g.winner;});
+      if(!allComplete)return;
+      const maxDk=dk(date);
+      const ko=savedR.koGames.filter(g=>{const d=pd.get(g.a+'|'+g.b);return d&&dk(d)<=maxDk&&g.winner;});
+      const hasFin=ko.some(g=>g.round==='F');
+      const stateKey=JSON.stringify(ko); if(stateKey===prevKOState)return; prevKOState=stateKey;
+      cps.push({key:date,state:{groupGames:savedR.groupGames,koGames:ko,goldenBoot:hasFin?savedR.goldenBoot:null,thirdPlace:hasFin?savedR.thirdPlace:null}});
+    });
+    const sfDone=savedR.koGames.filter(g=>g.round==='SF'&&g.winner).length>=2;
+    if(sfDone&&savedR.thirdPlace&&!cps.some(c=>c.key==='Jul 18')){
+      const koSF=savedR.koGames.filter(g=>['R32','R16','QF','SF'].includes(g.round)&&g.winner);
+      cps.push({key:'Jul 18',state:{groupGames:savedR.groupGames,koGames:koSF,goldenBoot:null,thirdPlace:savedR.thirdPlace}});
+    }
+  }
+  // Progressive simulation — one checkpoint per event loop tick
+  const pts=[];
+  let cpIdx=0;
+  const jobId=++_oddsJobId;
+  const _axisIdx=Object.fromEntries(CHART_AXIS.map((e,i)=>[e.key,i]));
+  paintOddsChart(host,[]); // show empty axes immediately
+  function step(){
+    if(_oddsJobId!==jobId)return; // cancelled by tab switch or re-render
+    if(cpIdx<cps.length){
+      const cp=cps[cpIdx++];
+      pts.push({key:cp.key,odds:simAt(cp.state)});
+      const partial=[...pts].sort((a,b)=>(_axisIdx[a.key]??999)-(_axisIdx[b.key]??999));
+      paintOddsChart(host,partial);
+      setTimeout(step,0);
+    }else{
+      // Finalize: Final deterministic override, sort, live point
+      if(savedR.koGames.some(g=>g.round==='F'&&g.winner)){
+        const S=scores();
+        const totals=Object.fromEntries(Object.keys(PLAYERS).map(p=>[p,S[p].total]));
+        const max=Math.max(...Object.values(totals));
+        const winners=Object.keys(PLAYERS).filter(p=>totals[p]===max);
+        const odds=Object.fromEntries(Object.keys(PLAYERS).map(p=>[p,winners.includes(p)?1/winners.length:0.0]));
+        const ei=pts.findIndex(p=>p.key==='Jul 19');
+        if(ei>=0)pts[ei]={key:'Jul 19',odds};else pts.push({key:'Jul 19',odds});
+      }
+      pts.sort((a,b)=>(_axisIdx[a.key]??999)-(_axisIdx[b.key]??999));
+      {
+        const liveOdds=getSimOdds();
+        let latestDataIdx=_axisIdx['Pre']??0; // default to Pre when no real data yet
+        Object.keys(savedR.groupGames).forEach(k=>{const di=_axisIdx[MATCH_DATES[k]]??-1;if(di>latestDataIdx)latestDataIdx=di;});
+        savedR.koGames.forEach(g=>{if(!g.winner)return;const d=_koPairDate.get(g.a+'|'+g.b);if(d){const di=_axisIdx[d]??-1;if(di>latestDataIdx)latestDataIdx=di;}});
+        if(savedR.thirdPlace){const di=_axisIdx['Jul 18']??-1;if(di>latestDataIdx)latestDataIdx=di;}
+        const liveKey=CHART_AXIS[latestDataIdx].key;
+        const ei=pts.findIndex(p=>p.key===liveKey);
+        if(ei>=0)pts[ei]={key:liveKey,odds:liveOdds};
+        else{pts.push({key:liveKey,odds:liveOdds});pts.sort((a,b)=>(_axisIdx[a.key]??999)-(_axisIdx[b.key]??999));}
+      }
+      _oddsHistory=pts; _oddsHistoryKey=cacheKey;
+      paintOddsChart(host,pts);
+    }
+  }
+  setTimeout(step,0);
+}
+
+/* ----- points history chart ----- */
+let _ptsHistory=null,_ptsHistoryKey='';
+function getPointsHistory(){
+  const key=JSON.stringify(R);
+  if(key===_ptsHistoryKey&&_ptsHistory)return _ptsHistory;
+  _ptsHistory=computePointsHistory();
+  _ptsHistoryKey=key;
+  return _ptsHistory;
+}
+function computePointsHistory(){
+  const savedR=R;
+  function dateKey(d){if(!d)return 999;const[mon,day]=d.split(' ');return(mon==='Jul'?100:0)+parseInt(day);}
+  function pointsAt(state){
+    R=state;
+    try{const S=scores();return Object.fromEntries(Object.keys(PLAYERS).map(p=>[p,S[p].total]));}
+    finally{R=savedR;}
+  }
+  const pts=[];
+  pts.push({key:'Pre',points:Object.fromEntries(Object.keys(PLAYERS).map(p=>[p,0]))});
+  // Group stage: per-day checkpoints (same logic as computeOddsHistory)
+  const playedDates=[...new Set(Object.keys(savedR.groupGames).map(k=>MATCH_DATES[k]).filter(Boolean))];
+  playedDates.sort((a,b)=>dateKey(a)-dateKey(b));
+  let prevGGkey='';
+  playedDates.forEach(date=>{
+    const allOnDate=Object.keys(MATCH_DATES).filter(k=>MATCH_DATES[k]===date);
+    const allComplete=allOnDate.every(k=>{const r=savedR.groupGames[k];return r&&r.hg!=null&&r.ag!=null&&r.hg!==''&&r.ag!==''&&!Number.isNaN(+r.hg)&&!Number.isNaN(+r.ag);});
+    if(!allComplete)return;
+    const maxDk=dateKey(date);
+    const gg={};
+    Object.entries(savedR.groupGames).forEach(([k,v])=>{if(dateKey(MATCH_DATES[k])<=maxDk)gg[k]=v;});
+    const key=JSON.stringify(gg); if(key===prevGGkey)return; prevGGkey=key;
+    pts.push({key:date,points:pointsAt({groupGames:gg,koGames:[],goldenBoot:null,thirdPlace:null})});
+  });
+  // KO stage: per-day checkpoints
+  // _koPairDate lifted to function scope for use in live-point block below
+  const _koPairDate=new Map();
+  if(savedR.koGames.some(g=>g.winner)||savedR.thirdPlace){
+    const{r32,r16,qf,sf,fin:finBkt}=buildCurrentBracket();
+    const dateGames=new Map();
+    const addRound=(matches,dates,rd)=>matches.forEach((m,i)=>{
+      if(!m.a||!m.b)return; const d=dates[i]; if(!d)return;
+      if(!dateGames.has(d))dateGames.set(d,[]); dateGames.get(d).push({a:m.a,b:m.b,rd});
+    });
+    addRound(r32,KO_DATES.r32,'R32'); addRound(r16,KO_DATES.r16,'R16');
+    addRound(qf,KO_DATES.qf,'QF'); addRound(sf,KO_DATES.sf,'SF');
+    addRound(finBkt,KO_DATES.fin,'F');
+    const pairDate=_koPairDate;
+    dateGames.forEach((games,date)=>games.forEach(({a,b})=>{pairDate.set(a+'|'+b,date);pairDate.set(b+'|'+a,date);}));
+    const sortedKODates=[...dateGames.keys()].sort((a,b)=>dateKey(a)-dateKey(b));
+    let prevKOState='';
+    sortedKODates.forEach(date=>{
+      const games=dateGames.get(date);
+      const allComplete=games.every(({a,b})=>{
+        const g=savedR.koGames.find(x=>(x.a===a&&x.b===b)||(x.a===b&&x.b===a));
+        return g&&g.winner;
+      });
+      if(!allComplete)return;
+      const maxDk=dateKey(date);
+      const ko=savedR.koGames.filter(g=>{const d=pairDate.get(g.a+'|'+g.b);return d&&dateKey(d)<=maxDk&&g.winner;});
+      const hasFin=ko.some(g=>g.round==='F');
+      const stateKey=JSON.stringify(ko); if(stateKey===prevKOState)return; prevKOState=stateKey;
+      pts.push({key:date,points:pointsAt({groupGames:savedR.groupGames,koGames:ko,goldenBoot:hasFin?savedR.goldenBoot:null,thirdPlace:hasFin?savedR.thirdPlace:null})});
+    });
+    const sfDone=savedR.koGames.filter(g=>g.round==='SF'&&g.winner).length>=2;
+    if(sfDone&&savedR.thirdPlace&&!pts.some(p=>p.key==='Jul 18')){
+      const koSF=savedR.koGames.filter(g=>['R32','R16','QF','SF'].includes(g.round)&&g.winner);
+      pts.push({key:'Jul 18',points:pointsAt({groupGames:savedR.groupGames,koGames:koSF,goldenBoot:null,thirdPlace:savedR.thirdPlace})});
+    }
+  }
+  const _axisIdx=Object.fromEntries(CHART_AXIS.map((e,i)=>[e.key,i]));
+  pts.sort((a,b)=>(_axisIdx[a.key]??999)-(_axisIdx[b.key]??999));
+  // Live point: at the latest date with any entered data (group, KO, or thirdPlace)
+  const hasData=Object.keys(savedR.groupGames).length>0||savedR.koGames.some(g=>g.winner)||!!savedR.thirdPlace;
+  if(hasData){
+    const livePoints=pointsAt(savedR);
+    let latestDataIdx=-1;
+    Object.keys(savedR.groupGames).forEach(k=>{
+      const di=_axisIdx[MATCH_DATES[k]]??-1;
+      if(di>latestDataIdx)latestDataIdx=di;
+    });
+    savedR.koGames.forEach(g=>{
+      if(!g.winner)return;
+      const d=_koPairDate.get(g.a+'|'+g.b);
+      if(d){const di=_axisIdx[d]??-1;if(di>latestDataIdx)latestDataIdx=di;}
+    });
+    if(savedR.thirdPlace){const di=_axisIdx['Jul 18']??-1;if(di>latestDataIdx)latestDataIdx=di;}
+    if(latestDataIdx>=0){
+      const liveKey=CHART_AXIS[latestDataIdx].key;
+      const ei=pts.findIndex(p=>p.key===liveKey);
+      if(ei>=0)pts[ei]={key:liveKey,points:livePoints};
+      else{pts.push({key:liveKey,points:livePoints});pts.sort((a,b)=>(_axisIdx[a.key]??999)-(_axisIdx[b.key]??999));}
+    }
+  }
+  return pts;
+}
+function renderPoints(){
+  const host=document.getElementById("pointsroot"); if(!host)return;
+  const history=getPointsHistory();
+  const histMap={};history.forEach(h=>histMap[h.key]=h.points);
+  const n=CHART_AXIS.length;
+  const W=680,H=260,pL=44,pR=16,pT=16,pB=36;
+  const pw=W-pL-pR,ph=H-pT-pB;
+  const xs=i=>pL+i/(n-1)*pw;
+  const players=Object.keys(PLAYERS);
+  // Dynamic Y scale — round up to nearest 50
+  let maxPts=50;
+  history.forEach(h=>Object.values(h.points).forEach(v=>{if(v>maxPts)maxPts=v;}));
+  maxPts=Math.ceil(maxPts/50)*50;
+  const ysv=v=>pT+(1-v/maxPts)*ph;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;font-family:'IBM Plex Mono',monospace">`;
+  // Y gridlines
+  const step=maxPts<=100?25:50;
+  for(let v=0;v<=maxPts+0.01;v+=step){
+    const yy=ysv(v).toFixed(1);
+    svg+=`<line x1="${pL}" y1="${yy}" x2="${W-pR}" y2="${yy}" stroke="#1d232b" stroke-width="1"/>`;
+    svg+=`<text x="${pL-5}" y="${+yy+4}" fill="#5c6775" font-size="10" text-anchor="end">${v}</text>`;
+  }
+  svg+=`<line x1="${pL}" y1="${pT+ph}" x2="${W-pR}" y2="${pT+ph}" stroke="#262d36" stroke-width="1"/>`;
+  // X ticks + labels (centered in section, taller boundary ticks)
+  const _secCx={};{let _ss=0;CHART_AXIS.forEach((e,i)=>{if(e.label){_secCx[e.key]=(xs(_ss)+xs(i))/2;_ss=i;}});}
+  CHART_AXIS.forEach((entry,i)=>{
+    const x=xs(i).toFixed(1);
+    const hasData=!!histMap[entry.key];
+    if(entry.label){
+      const col=hasData?'#5c6775':'#2a3340';
+      svg+=`<line x1="${x}" y1="${pT+ph}" x2="${x}" y2="${pT+ph+7}" stroke="${col}" stroke-width="1"/>`;
+      svg+=`<text x="${_secCx[entry.key].toFixed(1)}" y="${H-3}" fill="${col}" font-size="9" text-anchor="middle">${entry.label}</text>`;
+    }else{
+      const col=hasData?'#3a4452':'#1e252e';
+      svg+=`<line x1="${x}" y1="${pT+ph}" x2="${x}" y2="${pT+ph+3}" stroke="${col}" stroke-width="1"/>`;
+    }
+  });
+  // Smooth lines per player
+  players.forEach(p=>{
+    const col=PLAYERS[p].c;
+    const dpts=CHART_AXIS.map((entry,i)=>histMap[entry.key]!=null?{i,v:histMap[entry.key][p]}:null).filter(Boolean);
+    if(dpts.length>=2){
+      const pts2=dpts.map(d=>({x:+xs(d.i).toFixed(1),y:+ysv(d.v).toFixed(1)}));
+      svg+=`<path d="${monotonePath(pts2)}" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round"/>`;
+    }
+  });
+  svg+=`</svg>`;
+  const last=history[history.length-1];
+  const sorted=last?[...players].sort((a,b)=>last.points[b]-last.points[a]):[...players];
+  const legend=sorted.map(p=>`<span style="color:${PLAYERS[p].c};display:flex;align-items:center;gap:5px"><span style="width:16px;height:2px;background:${PLAYERS[p].c};display:inline-block;border-radius:2px"></span>${p}</span>`).join('');
+  host.innerHTML=`<div style="display:flex;gap:20px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;margin-bottom:12px">${legend}</div>${svg}<p class="odds-note">Cumulative points at each matchday snapshot</p>`;
 }
 
 /* ----- commissioner ----- */
@@ -1146,12 +1539,31 @@ function copyResults(){
   const txt="window.WC_RESULTS = "+JSON.stringify({groupGames:R.groupGames,koGames:R.koGames,goldenBoot:R.goldenBoot,thirdPlace:R.thirdPlace},null,2)+";";
   navigator.clipboard?.writeText(txt).then(()=>{const b=document.getElementById("copy");b.textContent="Copied!";setTimeout(()=>b.textContent="Copy",1200);});
 }
+function validateKO(koGames){
+  const prevRound={R16:'R32',QF:'R16',SF:'QF',F:'SF'};
+  const roundWinners={R32:new Set(),R16:new Set(),QF:new Set(),SF:new Set()};
+  (koGames||[]).forEach(g=>{if(g.winner&&roundWinners[g.round])roundWinners[g.round].add(g.winner);});
+  const errs=[];
+  (koGames||[]).forEach(g=>{
+    if(g.winner&&g.winner!==g.a&&g.winner!==g.b)
+      errs.push(`${g.round}: winner "${g.winner}" is not "${g.a}" or "${g.b}"`);
+    const prev=prevRound[g.round];
+    if(prev){
+      if(g.a&&!roundWinners[prev].has(g.a))errs.push(`${g.round}: "${g.a}" never won a ${prev} game`);
+      if(g.b&&!roundWinners[prev].has(g.b))errs.push(`${g.round}: "${g.b}" never won a ${prev} game`);
+    }
+  });
+  return errs;
+}
 function importFile(file){
   const fr=new FileReader();
   fr.onload=()=>{
     try{
-      const txt=fr.result; const s=txt.indexOf("{"), e=txt.lastIndexOf("}");
-      const obj=JSON.parse(txt.slice(s,e+1));
+      const txt=fr.result;
+      const m=txt.match(/window\.WC_RESULTS\s*=\s*(\{[\s\S]*\})\s*;/);
+      const obj=m?JSON.parse(m[1]):(()=>{const s=txt.indexOf("{"),e=txt.lastIndexOf("}");return JSON.parse(txt.slice(s,e+1));})();
+      const errs=validateKO(obj.koGames);
+      if(errs.length){alert("Import blocked — bracket inconsistency:\n\n"+errs.slice(0,5).join("\n")+(errs.length>5?`\n…and ${errs.length-5} more`:''));return;}
       R={groupGames:obj.groupGames||{},koGames:obj.koGames||[],goldenBoot:obj.goldenBoot??null,thirdPlace:obj.thirdPlace??null};
       renderAll(); markDirty();
     }catch(err){alert("Could not read that file. Expecting a results.js / JSON export.");}
@@ -1160,15 +1572,21 @@ function importFile(file){
 }
 
 /* ========================= WIRE-UP ========================= */
-function renderAll(){renderBoard();renderBracket();renderGroups();renderKO();renderCommGroups();renderCommKO();renderAwards();liveTally();}
-document.getElementById("tabs").addEventListener("click",e=>{
-  const b=e.target.closest(".tab"); if(!b)return;
+function renderAll(){renderBoard();renderPoints();renderBracket();renderGroups();renderKO();renderCommGroups();renderCommKO();renderAwards();liveTally();}
+function switchTab(name,updateUrl=true){
+  const b=document.querySelector('.tab[data-v="'+name+'"]'); if(!b)return;
+  if(updateUrl)history.replaceState(null,'','?'+name);
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("on",t===b));
   document.querySelectorAll(".view").forEach(v=>v.classList.remove("on"));
-  document.getElementById("v-"+b.dataset.v).classList.add("on");
-  if(b.dataset.v==="board")renderBoard();
-  if(b.dataset.v==="ko")renderBracket();
-  if(b.dataset.v==="odds")renderOdds();
+  document.getElementById("v-"+name).classList.add("on");
+  if(name==="standings"){renderBoard();renderPoints();}
+  if(name==="groups")renderGroups();
+  if(name==="knockout")renderBracket();
+  if(name==="odds")renderOdds();
+}
+document.getElementById("tabs").addEventListener("click",e=>{
+  const b=e.target.closest(".tab"); if(!b)return;
+  switchTab(b.dataset.v);
 });
 
 document.getElementById("export").addEventListener("click",exportFile);
@@ -1181,7 +1599,19 @@ function fmtTimestamp(iso){
 }
 const updStr=R.lastUpdated?`Results last synced <b style='color:#eef2f6'>${fmtTimestamp(R.lastUpdated)}</b> · `:'';
 document.getElementById("foot").innerHTML=`${updStr}Static site · no backend. Results live in <b style='color:#eef2f6'>results.js</b> — the file everyone's dashboard reads. Update it via the Matches tab → Export, or edit it directly and push to GitHub.`;
-renderAll();
+Promise.all([
+  fetch('elo.json').then(r=>r.json()).catch(()=>({})),
+  fetch('draft.json').then(r=>r.json()).catch(()=>({players:{},teams:{}}))
+]).then(([eloData,draftData])=>{
+  ELO=eloData;
+  if(draftData.players)PLAYERS=draftData.players;
+  if(draftData.teams)TEAMS=draftData.teams;
+  GROUP_LETTERS.forEach(L=>{GROUPS[L]=[];});
+  Object.keys(TEAMS).forEach(t=>GROUPS[TEAMS[t].g].push(t));
+  renderAll();
+  const initTab=(location.search||'').replace('?','');
+  if(initTab&&document.querySelector('.tab[data-v="'+initTab+'"]'))switchTab(initTab,false);
+});
 </script>
 </body>
 </html>
