@@ -562,12 +562,14 @@ function runMonteCarlo(N,seedStr){
     // Final
     sg(sf1,sf2);
 
-    // 3rd place playoff
+    // 3rd place playoff — winner gets +3 only, not a KO win
     if(R.thirdPlace){
       const tpo=TEAMS[R.thirdPlace]?.o;
-      if(tpo){S[tpo]+=SCORING.koWin;S[tpo]+=SCORING.thirdPlace;}
+      if(tpo)S[tpo]+=SCORING.thirdPlace;
     }else if(sfL1&&sfL2){
-      const tp=sg(sfL1,sfL2);
+      const k=sfL1+'|'+sfL2;
+      const tp=knownKO.has(k)?knownKO.get(k):simKOWin(sfL1,sfL2);
+      tgoals[tp]=(tgoals[tp]||0)+3;
       const tpo=TEAMS[tp]?.o;if(tpo)S[tpo]+=SCORING.thirdPlace;
     }
 
@@ -773,7 +775,7 @@ function buildCurrentBracket(){
   const nx=prev=>{const p=[];for(let i=0;i<prev.length;i+=2)p.push([prev[i].winner,prev[i+1].winner]);return mk(p);};
   const r32=mk(r32pairs),r16=nx(r32),qf=nx(r16),sf=nx(qf),fin=nx(sf);
   const sfL=sf.map(m=>m.winner&&m.a&&m.b?(m.winner===m.a?m.b:m.a):null);
-  const third=mk([[sfL[0],sfL[1]]]);
+  const third=[{a:sfL[0],b:sfL[1],winner:R.thirdPlace||null}];
   return{r32,r16,qf,sf,fin,third};
 }
 function renderBracket(){
@@ -903,9 +905,9 @@ function renderCommKO(){
     const{a,b,key}=e.target.dataset; const winner=e.target.value;
     if(key==='3P'){
       R.thirdPlace=winner||null;
+      // Remove from koGames if previously stored (avoid double-counting KO win)
       const idx=R.koGames.findIndex(g=>(g.a===a&&g.b===b)||(g.a===b&&g.b===a));
-      if(idx>=0)R.koGames[idx].winner=winner||'';
-      else if(winner)R.koGames.push({round:'F',a,b,winner});
+      if(idx>=0)R.koGames.splice(idx,1);
     }else{
       const idx=R.koGames.findIndex(g=>(g.a===a&&g.b===b)||(g.a===b&&g.b===a));
       if(idx>=0)R.koGames[idx].winner=winner||'';
