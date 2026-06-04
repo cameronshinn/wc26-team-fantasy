@@ -991,12 +991,17 @@ function renderOdds(){
     const col=PLAYERS[p].c;
     const dpts=CHART_AXIS.map((entry,i)=>histMap[entry.key]?{i,v:histMap[entry.key][p]}:null).filter(Boolean);
     if(dpts.length>=2){
-      const coords=dpts.map(d=>`${xs(d.i).toFixed(1)},${ysv(d.v).toFixed(1)}`).join(' ');
-      svg+=`<polyline points="${coords}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+      // Catmull-Rom → cubic bezier smooth path
+      const pts2=dpts.map(d=>({x:+xs(d.i).toFixed(1),y:+ysv(d.v).toFixed(1)}));
+      let d=`M${pts2[0].x},${pts2[0].y}`;
+      for(let k=0;k<pts2.length-1;k++){
+        const p0=pts2[Math.max(0,k-1)], p1=pts2[k], p2=pts2[k+1], p3=pts2[Math.min(pts2.length-1,k+2)];
+        const cp1x=(p1.x+(p2.x-p0.x)/6).toFixed(1), cp1y=(p1.y+(p2.y-p0.y)/6).toFixed(1);
+        const cp2x=(p2.x-(p3.x-p1.x)/6).toFixed(1), cp2y=(p2.y-(p3.y-p1.y)/6).toFixed(1);
+        d+=` C${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
+      }
+      svg+=`<path d="${d}" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round"/>`;
     }
-    dpts.forEach(d=>{
-      svg+=`<circle cx="${xs(d.i).toFixed(1)}" cy="${ysv(d.v).toFixed(1)}" r="3.5" fill="${col}"/>`;
-    });
   });
   svg+=`</svg>`;
   // Legend sorted by latest known odds
