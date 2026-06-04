@@ -121,21 +121,31 @@
   /* odds chart */
   #oddsroot,#pointsroot{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 16px}
   .odds-note{font-family:var(--mono);font-size:11px;color:var(--mut2);margin-top:14px;line-height:1.6}
+  .sim-explainer{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px}
+  .sim-explainer h3{font-size:13px;font-weight:700;color:var(--ink);margin:24px 0 8px;letter-spacing:.02em}
+  .sim-explainer h3:first-child{margin-top:0}
+  .sim-explainer p{font-size:13px;color:var(--mut);line-height:1.7;margin:0 0 8px}
+  .math-block{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 16px;margin:10px 0 14px;display:inline-block}
+  .sim-score-table{margin:10px 0 8px;max-width:320px}
+  .sim-score-table td{font-size:13px;color:var(--mut)}
+  .pts-col{font-family:var(--mono);color:var(--acc)!important;text-align:right;padding-left:24px}
 
   /* bracket */
   .bkt-outer{overflow-x:auto;padding-bottom:8px}
   .bkt-hdr{display:flex;gap:2px;margin-bottom:6px}
   .bkt-hlabel{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
     color:var(--acc);text-align:center;flex:1;min-width:110px}
-  .bkt{display:flex;gap:2px;height:1040px}
+  .bkt{display:flex;gap:2px;min-height:1040px}
   .bkt-round{display:flex;flex-direction:column;justify-content:space-around;flex:1;min-width:110px}
-  .bkt-match{background:var(--panel);border:1px solid var(--line);border-radius:8px;margin:2px 3px;overflow:hidden}
-  .bkt-team{padding:4px 7px;font-size:11px;display:flex;align-items:center;gap:5px;overflow:hidden}
+  .bkt-match{background:var(--panel);border:1px solid var(--line);border-radius:8px;margin:2px 3px;overflow:hidden;flex-shrink:0}
+  .bkt-team{padding:6px 7px;font-size:11px;display:flex;align-items:center;gap:5px;overflow:hidden}
   .bkt-team+.bkt-team{border-top:1px solid rgba(255,255,255,.05)}
   .bkt-team .bkt-tnm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
   .bkt-team.won{background:rgba(255,255,255,.05);font-weight:600}
-  .bkt-team.lost{opacity:.3}
-  .bkt-tbd{color:var(--mut2);font-size:10px}
+  .bkt-team.lost .bkt-tnm{opacity:.35}
+  .bkt-team.lost .dot{opacity:.25}
+  .bkt-tbd{color:var(--mut2);font-size:11px}
+  .bkt-gf{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--mut2);flex-shrink:0}
   .bkt-date{font-family:var(--mono);font-size:9px;color:var(--mut2);text-align:center;
     padding:2px 4px;border-bottom:1px solid rgba(255,255,255,.05);letter-spacing:.05em}
   .bkt-third-row{display:flex;gap:2px;margin-top:10px}
@@ -156,12 +166,14 @@
   .btn.go.dirty{animation:pulse 1.6s infinite}
   @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(198,255,61,.0)}50%{box-shadow:0 0 0 6px rgba(198,255,61,.12)}}
   .csec{margin:26px 0 8px;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--mut)}
-  .fix{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);
+  .fix{display:flex;align-items:center;background:var(--panel);border:1px solid var(--line);
     border-radius:10px;padding:8px 11px;margin-bottom:7px;font-size:13px}
-  .fixdate{font-family:var(--mono);font-size:10px;color:var(--mut2);white-space:nowrap;min-width:34px}
-  .fix .t{flex:1;display:flex;align-items:center;min-width:0}
-  .fix .t.away{justify-content:flex-end;text-align:right}
-  .fix .t.away .dot{margin-right:0;margin-left:7px}
+  .fix-row{display:flex;align-items:center;gap:8px;flex:1}
+  .fixdate-hdr{font-family:var(--mono);font-size:10px;color:var(--mut2);margin:10px 0 5px 2px}
+  .fixdate-hdr:first-child{margin-top:0}
+  .fix-row .t{flex:1;display:flex;align-items:center;min-width:0}
+  .fix-row .t.away{justify-content:flex-end;text-align:right}
+  .fix-row .t.away .dot{margin-right:0;margin-left:7px}
   .fix input.score{width:28px;text-align:center;background:#0c1015;border:1px solid var(--line);color:var(--ink);
     font-family:var(--mono);font-size:15px;border-radius:8px;padding:6px 2px}
   .fix input.score:focus{outline:none;border-color:var(--acc)}
@@ -213,6 +225,28 @@
 
   <section class="view" id="v-odds">
     <div id="oddsroot"></div>
+    <div class="sim-explainer" style="margin-top:16px">
+      <h3>How the simulation works</h3>
+      <p>Each data point on the chart represents 5,000 independent simulations of the remainder of the tournament from that moment in time, using real results where available and simulated results for unplayed games. Win probability is the fraction of those runs where each manager finishes with the highest point total.</p>
+
+      <h3>Group stage</h3>
+      <p>Each unplayed match is resolved by drawing goals independently from a <strong>Poisson distribution</strong>. The expected goals for each team are set by the Elo gap between them:</p>
+      <div class="math-block">λ<sub>A</sub> = 1.35 × e<sup>d / 400</sup> &nbsp;&nbsp;&nbsp; λ<sub>B</sub> = 1.35 × e<sup>−d / 400</sup></div>
+      <p>where <em>d</em> = Elo<sub>A</sub> − Elo<sub>B</sub>. At parity (d = 0) both teams average 1.35 goals — about 2.7 total, realistic for tournament football. A 400-point gap gives roughly 3.7 vs 0.7. Goals are capped at 8. Draws occur naturally when both teams score the same number.</p>
+      <p>Teams are ranked within their group using FIFA's tiebreaker order: points → head-to-head points → head-to-head goal difference → head-to-head goals scored → overall goal difference → overall goals scored. The top 2 from each group plus the 8 best third-placed teams (32 of 48) advance to the Round of 32.</p>
+
+      <h3>Knockout stage</h3>
+      <p>No draws — extra time and penalties are folded into a single win probability using the standard Elo formula:</p>
+      <div class="math-block">P(A wins) = 1 / (1 + 10<sup>−d / 400</sup>)</div>
+      <p>A 400-point gap gives the stronger team a 90.9% win probability. A 200-point gap gives 75.97%.</p>
+
+      <h3>Elo noise</h3>
+      <p>At the start of each simulation run, every team's Elo rating is perturbed by a random offset drawn from a normal distribution (σ = 75 points). This models within-tournament variance — injuries, form, luck — and prevents heavy favourites from advancing at unrealistically high certainty. ~68% of runs adjust a team by ≤75 points; ~95% by ≤150 points.</p>
+
+      <h3>Scoring</h3>
+      <table class="std sim-score-table" id="explainer-scoring"></table>
+      <p>The manager with the highest total in a given run wins that run.</p>
+    </div>
   </section>
 
   <section class="view" id="v-groups">
@@ -241,7 +275,7 @@
     <div class="korow">
       <span>Golden Boot — team of the top scorer</span>
       <select id="gb"></select>
-      <span style="font-family:var(--mono);color:var(--mut2)">+5</span>
+      <span id="gb-pts" style="font-family:var(--mono);color:var(--mut2)"></span>
     </div>
   </section>
 
@@ -250,7 +284,7 @@
 
 <script>
 /* ========================= THE DRAFT (fixed) ========================= */
-const SCORING = { groupWin:3, groupDraw:1, advance:5, koWin:5, goldenBoot:5, thirdPlace:3 };
+const SCORING = { groupWin:3, groupDraw:1, advance:5, koWin:8, goldenBoot:5, thirdPlace:3 };
 /* Players and teams loaded from draft.json at startup */
 let PLAYERS = {};
 let TEAMS = {};
@@ -444,12 +478,18 @@ const THIRD_SEEDING={
   "ABCDEFGL":"CGBDAFLE","ABCDEFGK":"CGBDAFEK","ABCDEFGJ":"CGBDAFEJ","ABCDEFGI":"CGBDAFEI","ABCDEFGH":"HGBCAFDE"
 };
 
-const ELO_NOISE=100; // ±points of uniform noise applied per team per MC iteration
+const ELO_NOISE=75;  // σ of normal noise applied per team per MC iteration (Box-Muller)
+const HOME_BOOST=100; // Elo boost for host nations (USA, Canada, Mexico)
+const HOME_TEAMS=new Set(['USA','Canada','Mexico']);
 
 // Module-level seeded RNG — replaced at the start of each runMonteCarlo call
 let _rng=Math.random;
 let _iterElo=null; // per-iteration noisy Elo snapshot; null → use global ELO
-function _elo(t){return(_iterElo?_iterElo[t]:ELO[t])||1750;}
+function _elo(t){return((_iterElo?_iterElo[t]:ELO[t])||1750)+(HOME_TEAMS.has(t)?HOME_BOOST:0);}
+function _randn(){
+  const u=1-_rng(),v=_rng(); // avoid log(0)
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
 function simPoisson(lam){
   const L=Math.exp(-lam);let k=0,p=1;
   do{k++;p*=_rng();}while(p>L);
@@ -457,7 +497,7 @@ function simPoisson(lam){
 }
 function simGroupGoals(a,b){
   const d=_elo(a)-_elo(b);
-  return[simPoisson(1.35*Math.exp(d/350)),simPoisson(1.35*Math.exp(-d/350))];
+  return[simPoisson(1.35*Math.exp(d/400)),simPoisson(1.35*Math.exp(-d/400))];
 }
 function simKOWin(a,b){
   const d=_elo(a)-_elo(b);
@@ -520,7 +560,7 @@ function computeTeamAdvOdds(N,seedStr){
   const adv={};Object.keys(TEAMS).forEach(t=>adv[t]=0);
   const _mm={};GROUP_LETTERS.forEach(L=>_mm[L]=new Map());
   for(let n=0;n<N;n++){
-    _iterElo={};Object.keys(ELO).forEach(t=>_iterElo[t]=ELO[t]+(_rng()*2-1)*ELO_NOISE);
+    _iterElo={};Object.keys(ELO).forEach(t=>_iterElo[t]=ELO[t]+_randn()*ELO_NOISE);
     const tpts={},tgd={},tgf={};
     Object.keys(TEAMS).forEach(t=>{tpts[t]=0;tgd[t]=0;tgf[t]=0;});
     GROUP_LETTERS.forEach(L=>{
@@ -561,7 +601,7 @@ function getTeamAdvOdds(){
 }
 
 let _simOdds=null,_simKey='';
-function stateKey(r){return JSON.stringify({groupGames:r.groupGames,koGames:r.koGames,goldenBoot:r.goldenBoot,thirdPlace:r.thirdPlace});}
+function stateKey(r){return JSON.stringify({groupGames:r.groupGames,koGames:r.koGames,goldenBoot:r.goldenBoot,thirdPlace:r.thirdPlace,thirdPlaceGame:r.thirdPlaceGame||null});}
 function getSimOdds(){
   const key=stateKey(R);
   if(key===_simKey&&_simOdds)return _simOdds;
@@ -592,7 +632,7 @@ function runMonteCarlo(N,seedStr){
 
   const _mm2={};GROUP_LETTERS.forEach(L=>_mm2[L]=new Map());
   for(let iter=0;iter<N;iter++){
-    _iterElo={};Object.keys(ELO).forEach(t=>_iterElo[t]=ELO[t]+(_rng()*2-1)*ELO_NOISE);
+    _iterElo={};Object.keys(ELO).forEach(t=>_iterElo[t]=ELO[t]+_randn()*ELO_NOISE);
     const S={};Object.keys(PLAYERS).forEach(p=>S[p]=0);
     const tpts={},tgd={},tgf={},tgoals={};
     Object.keys(TEAMS).forEach(t=>{tpts[t]=0;tgd[t]=0;tgf[t]=0;tgoals[t]=0;});
@@ -706,8 +746,8 @@ function runMonteCarlo(N,seedStr){
 }
 
 /* ========================= STATE ========================= */
-let R = window.WC_RESULTS || {groupGames:{},koGames:[],goldenBoot:null,thirdPlace:null};
-R.groupGames=R.groupGames||{}; R.koGames=R.koGames||[]; let dirty=false;
+let R = window.WC_RESULTS || {groupGames:{},koGames:[],goldenBoot:null,thirdPlace:null,thirdPlaceGame:null};
+R.groupGames=R.groupGames||{}; R.koGames=R.koGames||[]; R.thirdPlaceGame=R.thirdPlaceGame||null; let dirty=false;
 const ownerColor = t => { const o=TEAMS[t]?.o; return o?PLAYERS[o].color:"var(--mut2)"; };
 
 /* ========================= COMPUTE ========================= */
@@ -823,7 +863,7 @@ function renderBoard(){
   requestAnimationFrame(()=>el.querySelectorAll(".bar>i").forEach(i=>{const w=i.style.width;i.style.width="0";requestAnimationFrame(()=>i.style.width=w);}));
   const adv=advancers();
   document.getElementById("boardnote").innerHTML =
-    `Scoring · group win ${SCORING.groupWin} · draw ${SCORING.groupDraw} · advance ${SCORING.advance} · each knockout win ${SCORING.koWin} · Golden Boot ${SCORING.goldenBoot} · 3rd place ${SCORING.thirdPlace}.<br>`+
+    `Scoring · group win ${SCORING.groupWin} · group draw ${SCORING.groupDraw} · advance ${SCORING.advance} · each knockout win ${SCORING.koWin} · Golden Boot ${SCORING.goldenBoot} · 3rd place ${SCORING.thirdPlace}.<br>`+
     (adv.thirdsResolved? "All groups complete — best-third places resolved." : "Best-third-place spots resolve once every group has played all six games.")+
     ` Win % from 10,000-run Monte Carlo simulation, updated live as results come in.`;
 }
@@ -852,19 +892,40 @@ function renderGroups(){
         <td class="num">${r.pl}</td><td class="num">${r.gd>0?'+':''}${r.gd}</td><td class="pt">${r.pts}</td>${pctCell}</tr>`;
     });
     card.innerHTML=`<h3>Group ${L}<span class="st ${s.complete?'done':''}">${s.complete?'final':s.played+'/6'}</span></h3>
-      <table class="std">${rows}</table>`;
+      <table class="std"><thead><tr style="opacity:.45;font-size:10px;font-family:var(--mono)">
+        <td></td><td class="num">Pl</td><td class="num">GD</td><td class="pt">Pts</td><td class="adv-pct">R32%</td>
+      </tr></thead>${rows}</table>`;
     host.appendChild(card);
   });
 }
 
-const ROUND_NAMES={R32:"Round of 32",R16:"Round of 16",QF:"Quarter-finals",SF:"Semi-finals",F:"Final"};
+const ROUND_NAMES={R32:"Round of 32",R16:"Round of 16",QF:"Quarter-finals",SF:"Semi-finals","3P":"3rd Place",F:"Final"};
 function renderKO(){
   const host=document.getElementById("korounds"); host.innerHTML="";
   const rounds=["R32","R16","QF","SF","F"];
-  const any=R.koGames.length>0;
-  if(!any){ host.innerHTML=`<div class="empty">No knockout matches entered yet — add them in Commissioner mode once the bracket is set.</div>`; }
+  const any=R.koGames.length>0||advancers().set.size>0;
+  if(!any){ host.innerHTML=`<div class="empty">No knockout matches yet — the bracket will populate automatically as groups complete.</div>`; }
   rounds.forEach(rd=>{
     const games=R.koGames.filter(g=>g.round===rd); if(!games.length)return;
+    // Insert 3rd place section before Final
+    if(rd==='F'){
+      const bkt=buildCurrentBracket();
+      const sfGames=R.koGames.filter(g=>g.round==='SF');
+      const sfLosers=sfGames.map(g=>g.winner&&g.a&&g.b?(g.winner===g.a?g.b:g.a):null).filter(Boolean);
+      if(sfLosers.length===2||R.thirdPlace){
+        const a=sfLosers[0]||null, b=sfLosers[1]||null;
+        const winner=R.thirdPlace||null;
+        const aw=winner&&winner===a, bw=winner&&winner===b;
+        const o=winner?TEAMS[winner]?.o:null;
+        const tblock=document.createElement("div"); tblock.className="koround";
+        tblock.innerHTML=`<h3>${ROUND_NAMES['3P']}</h3><div class="kogame">
+          <span class="side ${aw?'win':''}"><span class="dot" style="--tc:${ownerColor(a)}"></span><span class="nm">${a||'TBD'}</span></span>
+          <span class="vs">vs</span>
+          <span class="side ${bw?'win':''}"><span class="dot" style="--tc:${ownerColor(b)}"></span><span class="nm">${b||'TBD'}</span></span>
+          ${winner?`<span class="tag">+${SCORING.thirdPlace} ${o||'—'}</span>`:''}</div>`;
+        host.appendChild(tblock);
+      }
+    }
     const block=document.createElement("div"); block.className="koround";
     let html=`<h3>${ROUND_NAMES[rd]}</h3>`;
     games.forEach(g=>{
@@ -874,7 +935,7 @@ function renderKO(){
         <span class="side ${aw?'win':''}"><span class="dot" style="--tc:${ownerColor(g.a)}"></span><span class="nm">${g.a||'TBD'}</span></span>
         <span class="vs">vs</span>
         <span class="side ${bw?'win':''}"><span class="dot" style="--tc:${ownerColor(g.b)}"></span><span class="nm">${g.b||'TBD'}</span></span>
-        ${g.winner?`<span class="tag">+5 ${o||'—'}</span>`:''}</div>`;
+        ${g.winner?`<span class="tag">+${SCORING.koWin} ${o||'—'}</span>`:''}</div>`;
     });
     block.innerHTML=html; host.appendChild(block);
   });
@@ -916,21 +977,27 @@ function renderBracket(){
   const{r32,r16,qf,sf,fin,third}=buildCurrentBracket();
   const host=document.getElementById("bktroot"); if(!host)return; host.innerHTML='';
   const rounds=[
-    {label:"R32",matches:r32,dates:KO_DATES.r32},
-    {label:"R16",matches:r16,dates:KO_DATES.r16},
-    {label:"QF",matches:qf,dates:KO_DATES.qf},
-    {label:"SF",matches:sf,dates:KO_DATES.sf},
+    {label:"Round of 32",matches:r32,dates:KO_DATES.r32},
+    {label:"Round of 16",matches:r16,dates:KO_DATES.r16},
+    {label:"Quarter-finals",matches:qf,dates:KO_DATES.qf},
+    {label:"Semi-finals",matches:sf,dates:KO_DATES.sf},
     {label:"Final",matches:fin,dates:KO_DATES.fin},
   ];
-  function makeMatchEl(m,date){
+  function makeMatchEl(m,date,scoresOverride){
     const wrap=document.createElement('div'); wrap.className='bkt-match';
     if(date){const d=document.createElement('div');d.className='bkt-date';d.textContent=date;wrap.appendChild(d);}
     [m.a,m.b].forEach(team=>{
       const won=team&&m.winner===team, lost=team&&m.winner&&m.winner!==team;
       const div=document.createElement('div');
       div.className='bkt-team'+(won?' won':lost?' lost':'');
-      if(team){div.innerHTML=`<span class="dot" style="--tc:${ownerColor(team)};margin-right:0;flex-shrink:0"></span><span class="bkt-tnm">${team}</span>`;}
-      else{div.innerHTML=`<span class="bkt-tbd">—</span>`;}
+      if(team){
+        const sg=scoresOverride||R.koGames.find(g=>(g.a===m.a&&g.b===m.b)||(g.a===m.b&&g.b===m.a));
+        const isHome=sg&&sg.a===team;
+        const goals=sg&&sg.hg!=null&&sg.ag!=null?(isHome?sg.hg:sg.ag):null;
+        const pens=sg&&sg.penHg!=null&&sg.penAg!=null?(isHome?sg.penHg:sg.penAg):null;
+        const gStr=goals!=null?`<span class="bkt-gf">${goals}${pens!=null?` (${pens})`:''}</span>`:'';
+        div.innerHTML=`<span class="dot" style="--tc:${ownerColor(team)};margin-right:0;flex-shrink:0"></span><span class="bkt-tnm">${team}</span>${gStr}`;
+      }else{div.innerHTML=`<span class="bkt-tbd">—</span>`;}
       wrap.appendChild(div);
     });
     return wrap;
@@ -947,7 +1014,7 @@ function renderBracket(){
   finCol.appendChild(makeMatchEl(fin[0],KO_DATES.fin[0]));
   const btm=document.createElement('div'); btm.style.cssText='flex:1;display:flex;flex-direction:column;justify-content:flex-end';
   const tLbl=document.createElement('div'); tLbl.className='bkt-third-label'; tLbl.textContent='3rd Place';
-  btm.appendChild(tLbl); btm.appendChild(makeMatchEl(third[0],KO_DATES.third[0]));
+  btm.appendChild(tLbl); btm.appendChild(makeMatchEl(third[0],KO_DATES.third[0],R.thirdPlaceGame||null));
   finCol.appendChild(btm); host.appendChild(finCol);
   const hdr=document.getElementById("bkthdr");
   if(hdr) hdr.innerHTML=rounds.map(r=>`<div class="bkt-hlabel">${r.label}</div>`).join('');
@@ -1417,17 +1484,18 @@ function renderCommGroups(){
     let html=`<h3>Group ${L}</h3>`;
     const sorted=[...fixtures(L)].sort((a,b)=>
       parseInt((MATCH_DATES[a.key]||'Jun 99').split(' ')[1])-parseInt((MATCH_DATES[b.key]||'Jun 99').split(' ')[1]));
+    let lastDate='';
     sorted.forEach(f=>{
       const r=R.groupGames[f.key]||{};
       const d=MATCH_DATES[f.key]||'';
-      html+=`<div class="fix">
-        ${d?`<span class="fixdate">${d}</span>`:''}
-        <span class="t"><span class="dot" style="--tc:${ownerColor(f.home)}"></span><span class="nm">${f.home}</span></span>
-        <input class="score" inputmode="numeric" data-k="${f.key}" data-s="hg" value="${r.hg??''}">
-        <span class="dash">–</span>
-        <input class="score" inputmode="numeric" data-k="${f.key}" data-s="ag" value="${r.ag??''}">
-        <span class="t away"><span class="nm">${f.away}</span><span class="dot" style="--tc:${ownerColor(f.away)}"></span></span>
-      </div>`;
+      if(d&&d!==lastDate){html+=`<div class="fixdate-hdr">${d}</div>`;lastDate=d;}
+      html+=`<div class="fix"><div class="fix-row">
+          <span class="t"><span class="dot" style="--tc:${ownerColor(f.home)}"></span><span class="nm">${f.home}</span></span>
+          <input class="score" inputmode="numeric" data-k="${f.key}" data-s="hg" value="${r.hg??''}">
+          <span class="dash">–</span>
+          <input class="score" inputmode="numeric" data-k="${f.key}" data-s="ag" value="${r.ag??''}">
+          <span class="t away"><span class="nm">${f.away}</span><span class="dot" style="--tc:${ownerColor(f.away)}"></span></span>
+        </div></div>`;
     });
     card.innerHTML=html; host.appendChild(card);
   });
@@ -1445,11 +1513,8 @@ function renderCommGroups(){
 function renderCommKO(){
   const host=document.getElementById("commKO"); host.innerHTML="";
   const{r32,r16,qf,sf,fin,third}=buildCurrentBracket();
-  const resultFor=(a,b)=>{
-    if(!a||!b)return'';
-    const g=R.koGames.find(x=>(x.a===a&&x.b===b)||(x.a===b&&x.b===a));
-    return g?g.winner||'':'';
-  };
+  const gameFor=(a,b)=>a&&b?R.koGames.find(x=>(x.a===a&&x.b===b)||(x.a===b&&x.b===a)):null;
+  const resultFor=(a,b)=>{const g=gameFor(a,b);return g?g.winner||'':''};
   const rounds=[
     {label:'Round of 32',key:'R32',matches:r32,dates:KO_DATES.r32},
     {label:'Round of 16',key:'R16',matches:r16,dates:KO_DATES.r16},
@@ -1467,20 +1532,27 @@ function renderCommKO(){
     matches.forEach((m,i)=>{
       if(!m.a&&!m.b)return;
       const winner=key==='3P'?(R.thirdPlace||''):resultFor(m.a,m.b);
+      const g=key==='3P'?R.thirdPlaceGame:gameFor(m.a,m.b);
+      const hgVal=g&&g.hg!=null?g.hg:''; const agVal=g&&g.ag!=null?g.ag:'';
       const d=dates[i]||'';
       const aHtml=m.a?`<span class="dot" style="--tc:${ownerColor(m.a)}"></span><span class="nm">${m.a}</span>`:`<span class="nm" style="color:var(--mut2)">TBD</span>`;
       const bHtml=m.b?`<span class="nm">${m.b}</span><span class="dot" style="--tc:${ownerColor(m.b)};margin-right:0;margin-left:7px"></span>`:`<span class="nm" style="color:var(--mut2)">TBD</span>`;
       const row=document.createElement('div'); row.className='fix';
       row.innerHTML=`
         ${d?`<span class="fixdate">${d}</span>`:''}
-        <span class="t">${aHtml}</span>
-        <span class="dash">–</span>
-        <span class="t away">${bHtml}</span>
-        <select data-a="${m.a||''}" data-b="${m.b||''}" data-key="${key}" style="margin-left:auto" ${m.a&&m.b?'':'disabled'}>
-          <option value="">—</option>
-          ${m.a?`<option value="${m.a}" ${winner===m.a?'selected':''}>${m.a}</option>`:''}
-          ${m.b?`<option value="${m.b}" ${winner===m.b?'selected':''}>${m.b}</option>`:''}
-        </select>`;
+        <div class="fix-row">
+          <span class="t">${aHtml}</span>
+          <input class="score ko-score" inputmode="numeric" data-a="${m.a||''}" data-b="${m.b||''}" data-s="hg" data-key="${key}" value="${hgVal}" ${m.a&&m.b?'':'disabled'}>
+          <span class="dash">–</span>
+          <input class="score ko-score" inputmode="numeric" data-a="${m.a||''}" data-b="${m.b||''}" data-s="ag" data-key="${key}" value="${agVal}" ${m.a&&m.b?'':'disabled'}>
+          ${key!=='3P'&&hgVal!==''&&agVal!==''&&+hgVal===+agVal?`<span style="font-family:var(--mono);font-size:10px;color:var(--mut2);margin-left:2px">(</span><input class="score ko-score" inputmode="numeric" data-a="${m.a||''}" data-b="${m.b||''}" data-s="penHg" data-key="${key}" value="${g?.penHg??''}" style="width:22px" ${m.a&&m.b?'':'disabled'}><span style="font-family:var(--mono);font-size:10px;color:var(--mut2)">–</span><input class="score ko-score" inputmode="numeric" data-a="${m.a||''}" data-b="${m.b||''}" data-s="penAg" data-key="${key}" value="${g?.penAg??''}" style="width:22px" ${m.a&&m.b?'':'disabled'}><span style="font-family:var(--mono);font-size:10px;color:var(--mut2)">)</span>`:''}
+          <span class="t away">${bHtml}</span>
+          <select data-a="${m.a||''}" data-b="${m.b||''}" data-key="${key}" style="margin-left:auto" ${m.a&&m.b?'':'disabled'}>
+            <option value="">—</option>
+            ${m.a?`<option value="${m.a}" ${winner===m.a?'selected':''}>${m.a}</option>`:''}
+            ${m.b?`<option value="${m.b}" ${winner===m.b?'selected':''}>${m.b}</option>`:''}
+          </select>
+        </div>`;
       sec.appendChild(row);
     });
     host.appendChild(sec);
@@ -1490,7 +1562,7 @@ function renderCommKO(){
     const{a,b,key}=e.target.dataset; const winner=e.target.value;
     if(key==='3P'){
       R.thirdPlace=winner||null;
-      // Remove from koGames if previously stored (avoid double-counting KO win)
+      if(!R.thirdPlaceGame&&a&&b)R.thirdPlaceGame={a,b,hg:null,ag:null};
       const idx=R.koGames.findIndex(g=>(g.a===a&&g.b===b)||(g.a===b&&g.b===a));
       if(idx>=0)R.koGames.splice(idx,1);
     }else{
@@ -1499,6 +1571,18 @@ function renderCommKO(){
       else if(winner)R.koGames.push({round:key,a,b,winner});
     }
     markDirty();liveTally();renderCommKO();renderKO();renderBracket();
+  }));
+  host.querySelectorAll('input.ko-score').forEach(inp=>inp.addEventListener('input',e=>{
+    const{a,b,s,key}=e.target.dataset; const v=e.target.value.replace(/[^0-9]/g,'');
+    e.target.value=v;
+    if(key==='3P'){
+      if(!R.thirdPlaceGame&&a&&b)R.thirdPlaceGame={a,b,hg:null,ag:null};
+      if(R.thirdPlaceGame)R.thirdPlaceGame[s]=v===''?null:+v;
+    }else{
+      const idx=R.koGames.findIndex(g=>(g.a===a&&g.b===b)||(g.a===b&&g.b===a));
+      if(idx>=0){R.koGames[idx][s]=v===''?null:+v;}
+    }
+    markDirty();renderBracket();renderCommKO();
   }));
 }
 function renderAwards(){
@@ -1528,7 +1612,7 @@ function exportFile(){
    LIVE RESULTS  —  generated by Commissioner Mode on ${new Date().toISOString().slice(0,10)}.
    Commit this file to update everyone's dashboard.
 ============================================================= */
-window.WC_RESULTS = ${JSON.stringify({groupGames:R.groupGames,koGames:R.koGames,goldenBoot:R.goldenBoot,thirdPlace:R.thirdPlace},null,2)};
+window.WC_RESULTS = ${JSON.stringify({groupGames:R.groupGames,koGames:R.koGames,goldenBoot:R.goldenBoot,thirdPlace:R.thirdPlace,thirdPlaceGame:R.thirdPlaceGame||null},null,2)};
 `;
   const blob=new Blob([body],{type:"text/javascript"});
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="results.js"; a.click();
@@ -1536,7 +1620,7 @@ window.WC_RESULTS = ${JSON.stringify({groupGames:R.groupGames,koGames:R.koGames,
   dirty=false; document.getElementById("export").classList.remove("dirty");
 }
 function copyResults(){
-  const txt="window.WC_RESULTS = "+JSON.stringify({groupGames:R.groupGames,koGames:R.koGames,goldenBoot:R.goldenBoot,thirdPlace:R.thirdPlace},null,2)+";";
+  const txt="window.WC_RESULTS = "+JSON.stringify({groupGames:R.groupGames,koGames:R.koGames,goldenBoot:R.goldenBoot,thirdPlace:R.thirdPlace,thirdPlaceGame:R.thirdPlaceGame||null},null,2)+";";
   navigator.clipboard?.writeText(txt).then(()=>{const b=document.getElementById("copy");b.textContent="Copied!";setTimeout(()=>b.textContent="Copy",1200);});
 }
 function validateKO(koGames){
@@ -1564,7 +1648,7 @@ function importFile(file){
       const obj=m?JSON.parse(m[1]):(()=>{const s=txt.indexOf("{"),e=txt.lastIndexOf("}");return JSON.parse(txt.slice(s,e+1));})();
       const errs=validateKO(obj.koGames);
       if(errs.length){alert("Import blocked — bracket inconsistency:\n\n"+errs.slice(0,5).join("\n")+(errs.length>5?`\n…and ${errs.length-5} more`:''));return;}
-      R={groupGames:obj.groupGames||{},koGames:obj.koGames||[],goldenBoot:obj.goldenBoot??null,thirdPlace:obj.thirdPlace??null};
+      R={groupGames:obj.groupGames||{},koGames:obj.koGames||[],goldenBoot:obj.goldenBoot??null,thirdPlace:obj.thirdPlace??null,thirdPlaceGame:obj.thirdPlaceGame??null};
       renderAll(); markDirty();
     }catch(err){alert("Could not read that file. Expecting a results.js / JSON export.");}
   };
@@ -1572,7 +1656,21 @@ function importFile(file){
 }
 
 /* ========================= WIRE-UP ========================= */
-function renderAll(){renderBoard();renderPoints();renderBracket();renderGroups();renderKO();renderCommGroups();renderCommKO();renderAwards();liveTally();}
+function renderScoringDisplays(){
+  const rows=[
+    ['Group stage win',    SCORING.groupWin],
+    ['Group stage draw',   SCORING.groupDraw],
+    ['Advance to Round of 32', SCORING.advance],
+    ['Knockout win',       SCORING.koWin],
+    ['Golden Boot',        SCORING.goldenBoot],
+    ['Third place',        SCORING.thirdPlace],
+  ];
+  const t=document.getElementById('explainer-scoring');
+  if(t)t.innerHTML=rows.map(([label,val])=>`<tr><td>${label}</td><td class="pts-col">+${val} pt${val!==1?'s':''}</td></tr>`).join('');
+  const gb=document.getElementById('gb-pts');
+  if(gb)gb.textContent='+'+SCORING.goldenBoot;
+}
+function renderAll(){renderScoringDisplays();renderBoard();renderPoints();renderBracket();renderGroups();renderKO();renderCommGroups();renderCommKO();renderAwards();liveTally();}
 function switchTab(name,updateUrl=true){
   const b=document.querySelector('.tab[data-v="'+name+'"]'); if(!b)return;
   if(updateUrl)history.replaceState(null,'','?'+name);
