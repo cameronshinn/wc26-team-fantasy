@@ -116,6 +116,10 @@
     border:1px solid var(--acc-dim);border-radius:99px;padding:2px 9px}
   .empty{font-family:var(--mono);font-size:12px;color:var(--mut2);padding:14px;border:1px dashed var(--line);border-radius:12px;text-align:center}
 
+  /* odds chart */
+  #oddsroot{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 16px}
+  .odds-note{font-family:var(--mono);font-size:11px;color:var(--mut2);margin-top:14px;line-height:1.6}
+
   /* bracket */
   .bkt-outer{overflow-x:auto;padding-bottom:8px}
   .bkt-hdr{display:flex;gap:2px;margin-bottom:6px}
@@ -193,14 +197,19 @@
 
   <nav class="tabs" id="tabs">
     <button class="tab on" data-v="board">Standings</button>
-    <button class="tab" data-v="commish">Matches</button>
+    <button class="tab" data-v="odds">Odds</button>
     <button class="tab" data-v="groups">Groups</button>
     <button class="tab" data-v="ko">Knockout</button>
+    <button class="tab" data-v="commish">Matches</button>
   </nav>
 
   <section class="view on" id="v-board">
     <div class="board" id="board"></div>
     <p class="note" id="boardnote"></p>
+  </section>
+
+  <section class="view" id="v-odds">
+    <div id="oddsroot"></div>
   </section>
 
   <section class="view" id="v-groups">
@@ -320,6 +329,28 @@ const KO_DATES={
   fin:['Jul 19'],
   third:['Jul 18'],
 };
+
+/* Full Odds chart axis — 35 positions: Pre + every match day.
+   Only entries with a `label` get text on the x-axis. */
+const CHART_AXIS=[
+  {key:'Pre',label:'Pre'},
+  {key:'Jun 11'},{key:'Jun 12'},{key:'Jun 13'},{key:'Jun 14'},{key:'Jun 15'},{key:'Jun 16'},
+  {key:'Jun 17',label:'Round 1'},
+  {key:'Jun 18'},{key:'Jun 19'},{key:'Jun 20'},{key:'Jun 21'},{key:'Jun 22'},
+  {key:'Jun 23',label:'Round 2'},
+  {key:'Jun 24'},{key:'Jun 25'},{key:'Jun 26'},
+  {key:'Jun 27',label:'Groups'},
+  {key:'Jun 28'},{key:'Jun 29'},{key:'Jun 30'},{key:'Jul 1'},{key:'Jul 2'},
+  {key:'Jul 3',label:'R32'},
+  {key:'Jul 4'},{key:'Jul 5'},{key:'Jul 6'},
+  {key:'Jul 7',label:'R16'},
+  {key:'Jul 9'},{key:'Jul 10'},
+  {key:'Jul 11',label:'QF'},
+  {key:'Jul 14'},
+  {key:'Jul 15',label:'SF'},
+  {key:'Jul 18'},
+  {key:'Jul 19',label:'Final'},
+];
 
 /* ========================= ELO RATINGS (pre-tournament, from FanDuel odds Jun 2 2026) ========================= */
 const ELO={
@@ -650,14 +681,19 @@ function scores(){
   }));
   // advancement
   A.forEach(t=>{ const o=TEAMS[t].o; if(o)S[o].adv+=SCORING.advance; });
-  // KO wins
-  R.koGames.forEach(g=>{ if(g.winner){ const o=TEAMS[g.winner]?.o; if(o)S[o].ko+=SCORING.koWin; } });
+  // KO wins — skip the 3rd place match (stored as round '3P', or old data as 'F' with winner===thirdPlace)
+  R.koGames.forEach(g=>{ if(g.winner&&g.round!=='3P'&&!(g.winner===R.thirdPlace&&g.round==='F')){ const o=TEAMS[g.winner]?.o; if(o)S[o].ko+=SCORING.koWin; } });
   // awards
   if(R.goldenBoot){const o=TEAMS[R.goldenBoot]?.o; if(o)S[o].gb+=SCORING.goldenBoot;}
   if(R.thirdPlace){const o=TEAMS[R.thirdPlace]?.o; if(o)S[o].third+=SCORING.thirdPlace;}
-  // advanced = teams confirmed in R32; alive = all teams not yet KO-eliminated (shows 12 pre-tournament)
+  // advanced = teams confirmed in R32
   A.forEach(t=>{const o=TEAMS[t].o; if(o)S[o].advanced++;});
-  Object.keys(TEAMS).forEach(t=>{const o=TEAMS[t].o; if(o&&!out.has(t))S[o].alive++;});
+  // alive: pre-tournament show all 12; in-tournament show advanced teams not yet KO-eliminated
+  if(A.size>0||out.size>0){
+    A.forEach(t=>{const o=TEAMS[t].o; if(o&&!out.has(t))S[o].alive++;});
+  }else{
+    Object.keys(TEAMS).forEach(t=>{const o=TEAMS[t].o; if(o)S[o].alive++;});
+  }
   Object.keys(S).forEach(p=>{const x=S[p]; x.total=x.gw+x.dr+x.adv+x.ko+x.gb+x.third;});
   return S;
 }
@@ -819,6 +855,157 @@ function renderBracket(){
   if(hdr) hdr.innerHTML=rounds.map(r=>`<div class="bkt-hlabel">${r.label}</div>`).join('');
 }
 
+/* ----- odds history ----- */
+let _oddsHistory=null,_oddsHistoryKey='';
+function getOddsHistory(){
+  const key=JSON.stringify(R);
+  if(key===_oddsHistoryKey&&_oddsHistory)return _oddsHistory;
+  _oddsHistory=computeOddsHistory();
+  _oddsHistoryKey=key;
+  return _oddsHistory;
+}
+function computeOddsHistory(){
+  const savedR=R;
+  const N=2000;
+  function dateKey(d){
+    if(!d)return 999;
+    const[mon,day]=d.split(' ');
+    return(mon==='Jul'?100:0)+parseInt(day);
+  }
+  function simAt(state){
+    R=state;
+    try{return runMonteCarlo(N,JSON.stringify(state));}
+    finally{R=savedR;}
+  }
+  const pts=[];
+  // Pre-tournament baseline
+  pts.push({key:'Pre',odds:simAt({groupGames:{},koGames:[],goldenBoot:null,thirdPlace:null})});
+  // Group stage: one checkpoint per calendar date where all matches that day are complete
+  const playedDates=[...new Set(Object.keys(savedR.groupGames).map(k=>MATCH_DATES[k]).filter(Boolean))];
+  playedDates.sort((a,b)=>dateKey(a)-dateKey(b));
+  let prevGGkey='';
+  playedDates.forEach(date=>{
+    const allOnDate=Object.keys(MATCH_DATES).filter(k=>MATCH_DATES[k]===date);
+    const allComplete=allOnDate.every(k=>{
+      const r=savedR.groupGames[k];
+      return r&&r.hg!=null&&r.ag!=null&&r.hg!==''&&r.ag!==''&&!Number.isNaN(+r.hg)&&!Number.isNaN(+r.ag);
+    });
+    if(!allComplete)return;
+    const maxDk=dateKey(date);
+    const gg={};
+    Object.entries(savedR.groupGames).forEach(([k,v])=>{if(dateKey(MATCH_DATES[k])<=maxDk)gg[k]=v;});
+    const key=JSON.stringify(gg);
+    if(key===prevGGkey)return;
+    prevGGkey=key;
+    pts.push({key:date,odds:simAt({groupGames:gg,koGames:[],goldenBoot:null,thirdPlace:null})});
+  });
+  // KO stage: per-day checkpoints — all games on that calendar day must have a winner
+  if(savedR.koGames.some(g=>g.winner)||savedR.thirdPlace){
+    const{r32,r16,qf,sf,fin:finBkt}=buildCurrentBracket();
+    // Map each bracket position to its date, and build a date→games index
+    const dateGames=new Map();
+    const addRound=(matches,dates,rd)=>matches.forEach((m,i)=>{
+      if(!m.a||!m.b)return;
+      const d=dates[i]; if(!d)return;
+      if(!dateGames.has(d))dateGames.set(d,[]);
+      dateGames.get(d).push({a:m.a,b:m.b,rd});
+    });
+    addRound(r32,KO_DATES.r32,'R32'); addRound(r16,KO_DATES.r16,'R16');
+    addRound(qf,KO_DATES.qf,'QF'); addRound(sf,KO_DATES.sf,'SF');
+    addRound(finBkt,KO_DATES.fin,'F');
+    // Reverse lookup: team-pair → date (both orders)
+    const pairDate=new Map();
+    dateGames.forEach((games,date)=>games.forEach(({a,b})=>{
+      pairDate.set(a+'|'+b,date); pairDate.set(b+'|'+a,date);
+    }));
+    const sortedKODates=[...dateGames.keys()].sort((a,b)=>dateKey(a)-dateKey(b));
+    let prevKOState='';
+    sortedKODates.forEach(date=>{
+      const games=dateGames.get(date);
+      const allComplete=games.every(({a,b})=>{
+        const g=savedR.koGames.find(x=>(x.a===a&&x.b===b)||(x.a===b&&x.b===a));
+        return g&&g.winner;
+      });
+      if(!allComplete)return;
+      const maxDk=dateKey(date);
+      const ko=savedR.koGames.filter(g=>{
+        const d=pairDate.get(g.a+'|'+g.b);
+        return d&&dateKey(d)<=maxDk&&g.winner;
+      });
+      const hasFin=ko.some(g=>g.round==='F');
+      const stateKey=JSON.stringify(ko);
+      if(stateKey===prevKOState)return;
+      prevKOState=stateKey;
+      pts.push({key:date,odds:simAt({
+        groupGames:savedR.groupGames, koGames:ko,
+        goldenBoot:hasFin?savedR.goldenBoot:null,
+        thirdPlace:hasFin?savedR.thirdPlace:null
+      })});
+    });
+    // 3rd place (Jul 18) — stored in R.thirdPlace, not koGames
+    const sfDone=savedR.koGames.filter(g=>g.round==='SF'&&g.winner).length>=2;
+    if(sfDone&&savedR.thirdPlace&&!pts.some(p=>p.key==='Jul 18')){
+      const koSF=savedR.koGames.filter(g=>['R32','R16','QF','SF'].includes(g.round)&&g.winner);
+      pts.push({key:'Jul 18',odds:simAt({
+        groupGames:savedR.groupGames, koGames:koSF,
+        goldenBoot:null, thirdPlace:savedR.thirdPlace
+      })});
+    }
+  }
+  return pts;
+}
+function renderOdds(){
+  const host=document.getElementById("oddsroot"); if(!host)return;
+  const history=getOddsHistory();
+  const histMap={};history.forEach(h=>histMap[h.key]=h.odds);
+  const n=CHART_AXIS.length;
+  const W=680,H=260,pL=38,pR=16,pT=16,pB=36;
+  const pw=W-pL-pR,ph=H-pT-pB;
+  const xs=i=>pL+i/(n-1)*pw;
+  const ysv=p=>pT+(1-p)*ph;
+  const players=Object.keys(PLAYERS);
+  let svg=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;font-family:'IBM Plex Mono',monospace">`;
+  // Y gridlines at 0,20,40,60,80,100%
+  for(let p=0;p<=1.001;p+=0.2){
+    const yy=ysv(p).toFixed(1);
+    svg+=`<line x1="${pL}" y1="${yy}" x2="${W-pR}" y2="${yy}" stroke="#1d232b" stroke-width="1"/>`;
+    svg+=`<text x="${pL-5}" y="${+yy+4}" fill="#5c6775" font-size="10" text-anchor="end">${Math.round(p*100)}%</text>`;
+  }
+  // X axis line
+  svg+=`<line x1="${pL}" y1="${pT+ph}" x2="${W-pR}" y2="${pT+ph}" stroke="#262d36" stroke-width="1"/>`;
+  // X axis: tick at every match day, label only at round boundaries
+  CHART_AXIS.forEach((entry,i)=>{
+    const x=xs(i).toFixed(1);
+    const hasData=!!histMap[entry.key];
+    if(entry.label){
+      const col=hasData?'#5c6775':'#2a3340';
+      svg+=`<line x1="${x}" y1="${pT+ph}" x2="${x}" y2="${pT+ph+4}" stroke="${col}" stroke-width="1"/>`;
+      svg+=`<text x="${x}" y="${H-3}" fill="${col}" font-size="9" text-anchor="middle">${entry.label}</text>`;
+    }else{
+      const col=hasData?'#3a4452':'#1e252e';
+      svg+=`<line x1="${x}" y1="${pT+ph}" x2="${x}" y2="${pT+ph+3}" stroke="${col}" stroke-width="1"/>`;
+    }
+  });
+  // Lines + dots per player — only positions with data
+  players.forEach(p=>{
+    const col=PLAYERS[p].c;
+    const dpts=CHART_AXIS.map((entry,i)=>histMap[entry.key]?{i,v:histMap[entry.key][p]}:null).filter(Boolean);
+    if(dpts.length>=2){
+      const coords=dpts.map(d=>`${xs(d.i).toFixed(1)},${ysv(d.v).toFixed(1)}`).join(' ');
+      svg+=`<polyline points="${coords}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    }
+    dpts.forEach(d=>{
+      svg+=`<circle cx="${xs(d.i).toFixed(1)}" cy="${ysv(d.v).toFixed(1)}" r="3.5" fill="${col}"/>`;
+    });
+  });
+  svg+=`</svg>`;
+  // Legend sorted by latest known odds
+  const last=history[history.length-1];
+  const sorted=last?[...players].sort((a,b)=>last.odds[b]-last.odds[a]):[...players];
+  const legend=sorted.map(p=>`<span style="color:${PLAYERS[p].c};display:flex;align-items:center;gap:5px"><span style="width:16px;height:2px;background:${PLAYERS[p].c};display:inline-block;border-radius:2px"></span>${p}${last?` ${(last.odds[p]*100).toFixed(1)}%`:''}</span>`).join('');
+  host.innerHTML=`<div style="display:flex;gap:20px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;margin-bottom:12px">${legend}</div>${svg}<p class="odds-note">Win % from 2,000-run Monte Carlo at each matchday snapshot</p>`;
+}
+
 /* ----- commissioner ----- */
 function teamOptions(sel){
   let o=`<option value="">— none —</option>`;
@@ -976,6 +1163,7 @@ document.getElementById("tabs").addEventListener("click",e=>{
   document.getElementById("v-"+b.dataset.v).classList.add("on");
   if(b.dataset.v==="board")renderBoard();
   if(b.dataset.v==="ko")renderBracket();
+  if(b.dataset.v==="odds")renderOdds();
 });
 
 document.getElementById("export").addEventListener("click",exportFile);
@@ -987,7 +1175,7 @@ function fmtTimestamp(iso){
   return `${mo[d.getUTCMonth()]} ${d.getUTCDate()} · ${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')} UTC`;
 }
 const updStr=R.lastUpdated?`Results last synced <b style='color:#eef2f6'>${fmtTimestamp(R.lastUpdated)}</b> · `:'';
-document.getElementById("foot").innerHTML=`${updStr}Static site · no backend. Results live in <b style='color:#eef2f6'>results.js</b> — the file everyone's dashboard reads. Update it via Commissioner Mode → Export, or edit it directly and push to GitHub.`;
+document.getElementById("foot").innerHTML=`${updStr}Static site · no backend. Results live in <b style='color:#eef2f6'>results.js</b> — the file everyone's dashboard reads. Update it via the Matches tab → Export, or edit it directly and push to GitHub.`;
 renderAll();
 </script>
 </body>
