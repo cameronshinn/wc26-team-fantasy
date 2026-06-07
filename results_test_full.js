@@ -117,14 +117,14 @@ window.WC_RESULTS = {
     {"round":"R16","a":"Netherlands", "b":"Norway",      "winner":"Netherlands", "hg":2,"ag":1},
     {"round":"R16","a":"France",      "b":"Brazil",      "winner":"France",      "hg":1,"ag":0},
     {"round":"R16","a":"Mexico",      "b":"England",     "winner":"Mexico",      "hg":2,"ag":1},
-    {"round":"R16","a":"USA",         "b":"Belgium",     "winner":"Belgium",     "hg":2,"ag":1},
+    {"round":"R16","a":"USA",         "b":"Belgium",     "winner":"USA",         "hg":2,"ag":1},
     {"round":"R16","a":"Spain",       "b":"Turkey",      "winner":"Spain",       "hg":2,"ag":0},
     {"round":"R16","a":"Canada",      "b":"Argentina",   "winner":"Argentina",   "hg":0,"ag":3},
     {"round":"R16","a":"Portugal",    "b":"Colombia",    "winner":"Portugal",    "hg":1,"ag":0},
 
     {"round":"QF","a":"Germany",     "b":"Netherlands",  "winner":"Germany",     "hg":2,"ag":1},
     {"round":"QF","a":"France",      "b":"Mexico",       "winner":"France",      "hg":2,"ag":0},
-    {"round":"QF","a":"Belgium",     "b":"Spain",        "winner":"Spain",       "hg":1,"ag":1,"penHg":3,"penAg":4},
+    {"round":"QF","a":"USA",         "b":"Spain",        "winner":"Spain",       "hg":1,"ag":1,"penHg":3,"penAg":4},
     {"round":"QF","a":"Argentina",   "b":"Portugal",     "winner":"Argentina",   "hg":3,"ag":2},
 
     {"round":"SF","a":"Germany",     "b":"France",       "winner":"France",      "hg":0,"ag":1},

@@ -83,8 +83,8 @@
   .note{font-family:var(--mono);font-size:11px;color:var(--mut2);margin-top:18px;line-height:1.6}
 
   /* groups */
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
-  .gcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 15px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;align-items:start}
+  .gcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 15px;overflow:hidden;transition:height .2s ease}
   .gcard h3{margin:0 0 11px;font-family:"Anton",sans-serif;font-weight:400;font-size:24px;letter-spacing:.04em;
     text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
   .gcard h3 .st{font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--mut2);border:1px solid var(--line);
@@ -121,6 +121,13 @@
   /* odds chart */
   #oddsroot,#pointsroot{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 16px}
   .odds-note{font-family:var(--mono);font-size:11px;color:var(--mut2);margin-top:14px;line-height:1.6}
+  .elo-box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-top:12px}
+  .elo-box h3{font-size:13px;font-weight:700;color:var(--ink);margin:0 0 14px;letter-spacing:.02em}
+  .elo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:4px 16px}
+  .elo-row{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:12px;padding:3px 0;border-bottom:1px solid var(--line)}
+  .elo-row .elo-name{color:var(--mut)}
+  .elo-row .elo-val{color:var(--ink);white-space:nowrap}
+  .elo-row .elo-home{color:var(--acc);font-size:10px;margin-left:4px}
   .sim-explainer{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px}
   .sim-explainer h3{font-size:13px;font-weight:700;color:var(--ink);margin:24px 0 8px;letter-spacing:.02em}
   .sim-explainer h3:first-child{margin-top:0}
@@ -155,7 +162,8 @@
 
   /* commissioner */
   .cbanner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--panel2);border:1px solid var(--line);
-    border-radius:14px;padding:14px 16px;margin-bottom:18px}
+    border-radius:14px;padding:14px 16px;margin-bottom:18px;
+    position:sticky;top:12px;z-index:20;}
   .cbanner .live{font-family:var(--mono);font-size:12px;color:var(--mut);flex:1;min-width:220px}
   .cbanner .live b{color:var(--ink)}
   .btn{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);
@@ -185,7 +193,7 @@
     border-radius:10px;padding:10px 12px;margin-bottom:8px}
   .korow .x{margin-left:auto;color:var(--Grant);cursor:pointer;font-family:var(--mono);font-size:12px;border:1px solid #3a2630;
     border-radius:8px;padding:6px 10px;background:transparent}
-  .grp2{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+  .grp2{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;align-items:start}
   .io{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
   label.file{display:inline-block}
   label.file input{display:none}
@@ -225,6 +233,10 @@
 
   <section class="view" id="v-odds">
     <div id="oddsroot"></div>
+    <div class="elo-box" id="elo-box-root" style="display:none">
+      <h3>Elo Ratings Used in Simulation</h3>
+      <div class="elo-grid" id="elo-grid"></div>
+    </div>
     <div class="sim-explainer" style="margin-top:16px">
       <h3>How the simulation works</h3>
       <p>Each data point on the chart represents 5,000 independent simulations of the remainder of the tournament from that moment in time, using real results where available and simulated results for unplayed games. Win probability is the fraction of those runs where each manager finishes with the highest point total.</p>
@@ -241,7 +253,10 @@
       <p>A 400-point gap gives the stronger team a 90.9% win probability. A 200-point gap gives 75.97%.</p>
 
       <h3>Elo noise</h3>
-      <p>At the start of each simulation run, every team's Elo rating is perturbed by a random offset drawn from a normal distribution (σ = 75 points). This models within-tournament variance — injuries, form, luck — and prevents heavy favourites from advancing at unrealistically high certainty. ~68% of runs adjust a team by ≤75 points; ~95% by ≤150 points.</p>
+      <p>At the start of each simulation run, every team's Elo rating is perturbed by a random offset drawn from a normal distribution (σ = <span id="meth-elo-noise-1">100</span> points). This models within-tournament variance — injuries, form, luck — and prevents heavy favourites from advancing at unrealistically high certainty. ~68% of runs adjust a team by ≤<span id="meth-elo-noise-2">100</span> points; ~95% by ≤<span id="meth-elo-noise-3">200</span> points.</p>
+
+      <h3>Golden Boot</h3>
+      <p>The simulation doesn't track individual scorers — it operates at the team level. As a proxy, each team accumulates a <em>simulated goals</em> tally: the actual goals scored in all group-stage matches (Poisson-drawn) plus <strong>3 bonus goals per knockout win</strong>. The bonus rewards teams that advance deeper, since their star players accumulate more scoring opportunities across extra matches. The team with the highest tally in a given simulation run is awarded the Golden Boot, and its owner receives the +5 points. If the real Golden Boot winner is already known, that result is used directly instead.</p>
 
       <h3>Scoring</h3>
       <table class="std sim-score-table" id="explainer-scoring"></table>
@@ -282,6 +297,7 @@
   <footer id="foot"></footer>
 </div>
 
+<script src="results.js"></script>
 <script>
 /* ========================= THE DRAFT (fixed) ========================= */
 const SCORING = { groupWin:3, groupDraw:1, advance:5, koWin:8, goldenBoot:5, thirdPlace:3 };
@@ -369,8 +385,10 @@ const CHART_AXIS=[
   {key:'Jul 19',label:'Final'},
 ];
 
-/* ELO ratings loaded from elo.json at startup */
+/* ELO ratings — latest snapshot from elo-history.json, loaded at startup */
 let ELO={};
+/* Historical ELO snapshots keyed by YYYY-MM-DD, loaded from elo-history.json */
+let ELO_HISTORY={};
 
 /* ========================= MONTE CARLO SIMULATION ========================= */
 // R32 third-place seeding: key=sorted 8 qualifying groups, value=8-char string
@@ -478,7 +496,9 @@ const THIRD_SEEDING={
   "ABCDEFGL":"CGBDAFLE","ABCDEFGK":"CGBDAFEK","ABCDEFGJ":"CGBDAFEJ","ABCDEFGI":"CGBDAFEI","ABCDEFGH":"HGBCAFDE"
 };
 
-const ELO_NOISE=75;  // σ of normal noise applied per team per MC iteration (Box-Muller)
+const ELO_NOISE=100; // σ of normal noise applied per team per MC iteration (Box-Muller)
+document.querySelectorAll('#meth-elo-noise-1,#meth-elo-noise-2').forEach(el=>el.textContent=ELO_NOISE);
+document.getElementById('meth-elo-noise-3').textContent=ELO_NOISE*2;
 const HOME_BOOST=100; // Elo boost for host nations (USA, Canada, Mexico)
 const HOME_TEAMS=new Set(['USA','Canada','Mexico']);
 
@@ -486,6 +506,21 @@ const HOME_TEAMS=new Set(['USA','Canada','Mexico']);
 let _rng=Math.random;
 let _iterElo=null; // per-iteration noisy Elo snapshot; null → use global ELO
 function _elo(t){return((_iterElo?_iterElo[t]:ELO[t])||1750)+(HOME_TEAMS.has(t)?HOME_BOOST:0);}
+function _cpKeyToIso(key){
+  if(key==='Pre')return '2026-06-10'; // day before tournament opens
+  const[mon,day]=key.split(' ');
+  const m={Jun:'06',Jul:'07'}[mon];
+  return m?`2026-${m}-${day.padStart(2,'0')}`:null;
+}
+function eloSnapshotFor(cpKey){
+  const dates=Object.keys(ELO_HISTORY).sort();
+  if(!dates.length)return ELO;
+  const iso=_cpKeyToIso(cpKey);
+  if(!iso)return ELO;
+  let best=null;
+  for(const d of dates){if(d<=iso)best=d;}
+  return best?ELO_HISTORY[best]:(dates.length?ELO_HISTORY[dates[0]]:ELO);
+}
 function _randn(){
   const u=1-_rng(),v=_rng(); // avoid log(0)
   return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
@@ -554,50 +589,95 @@ function computeTeamAdvOdds(N,seedStr){
     const A=advancers();
     return Object.fromEntries(Object.keys(TEAMS).map(t=>[t,A.set.has(t)?1:0]));
   }
-  let s=0;if(seedStr)for(let i=0;i<seedStr.length;i++)s=Math.imul(31,s)+seedStr.charCodeAt(i)|0;
-  s=(s>>>0)||1;
-  _rng=()=>{s^=s<<13;s^=s>>17;s^=s<<5;return(s>>>0)/4294967296;};
-  const adv={};Object.keys(TEAMS).forEach(t=>adv[t]=0);
-  const _mm={};GROUP_LETTERS.forEach(L=>_mm[L]=new Map());
-  for(let n=0;n<N;n++){
-    _iterElo={};Object.keys(ELO).forEach(t=>_iterElo[t]=ELO[t]+_randn()*ELO_NOISE);
-    const tpts={},tgd={},tgf={};
-    Object.keys(TEAMS).forEach(t=>{tpts[t]=0;tgd[t]=0;tgf[t]=0;});
-    GROUP_LETTERS.forEach(L=>{
-      _mm[L].clear();
-      fixtures(L).forEach(f=>{
-        let hg,ag;
-        const kn=R.groupGames[f.key];
-        if(kn&&kn.hg!=null&&kn.ag!=null&&kn.hg!==''&&kn.ag!==''&&!Number.isNaN(+kn.hg)&&!Number.isNaN(+kn.ag)){
-          hg=+kn.hg;ag=+kn.ag;
-        }else{[hg,ag]=simGroupGoals(f.home,f.away);}
-        _mm[L].set(f.home+'|'+f.away,{hg,ag});
-        tgf[f.home]+=hg;tgf[f.away]+=ag;
-        tgd[f.home]+=(hg-ag);tgd[f.away]+=(ag-hg);
-        if(hg>ag)tpts[f.home]+=3;
-        else if(ag>hg)tpts[f.away]+=3;
-        else{tpts[f.home]++;tpts[f.away]++;}
-      });
-    });
-    const allThirds=[];
-    GROUP_LETTERS.forEach(L=>{
-      const ranked=rankGroup(GROUPS[L],tpts,tgd,tgf,_mm[L]);
-      adv[ranked[0]]++;adv[ranked[1]]++;
-      allThirds.push({team:ranked[2],pts:tpts[ranked[2]],gd:tgd[ranked[2]],gf:tgf[ranked[2]]});
-    });
-    allThirds.sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
-    allThirds.slice(0,8).forEach(x=>adv[x.team]++);
-  }
-  Object.keys(adv).forEach(t=>adv[t]/=N);
-  return adv;
+  return runMonteCarlo(N,seedStr).teamAdv;
 }
 let _teamAdvOdds=null,_teamAdvKey='';
 function getTeamAdvOdds(){
+  if(_oddsHistory){
+    const grpKeys=new Set(GRP_AXIS.map(e=>e.key));
+    const last=[..._oddsHistory].filter(p=>grpKeys.has(p.key)&&p.teamAdv&&Object.keys(p.teamAdv).length>0)
+      .sort((a,b)=>_grpDk(a.key)-_grpDk(b.key)).at(-1);
+    if(last&&last.teamAdv)return last.teamAdv;
+  }
   const key=JSON.stringify(R.groupGames);
   if(key===_teamAdvKey&&_teamAdvOdds)return _teamAdvOdds;
   _teamAdvOdds=computeTeamAdvOdds(2000,key);
   _teamAdvKey=key;
   return _teamAdvOdds;
+}
+
+// Group-stage x-axis: Pre + every group match day up through Jun 27
+const GRP_AXIS=CHART_AXIS.slice(0,CHART_AXIS.findIndex(e=>e.key==='Jun 27')+1);
+
+function _grpDk(d){if(!d||d==='Pre')return -1;const[m,dy]=d.split(' ');return(m==='Jul'?100:0)+parseInt(dy);}
+
+// Derive group-stage advancement history from the unified sim history.
+// Returns {cpKey: {team: prob}} for all group-stage checkpoints computed so far.
+function advHistoryFrom(src){
+  const grpKeys=new Set(GRP_AXIS.map(e=>e.key));
+  const hist={};
+  src.forEach(p=>{if(grpKeys.has(p.key)&&p.teamAdv)hist[p.key]=p.teamAdv;});
+  return hist;
+}
+function getAdvHistory(){return advHistoryFrom(_oddsHistory||[]);}
+function repaintHoveredGroup(pts){
+  if(!_hoveredGroupCard||!_hoveredGroupLetter)return;
+  const hist=advHistoryFrom(pts);
+  _hoveredGroupCard.innerHTML=`<h3 style="margin-bottom:8px">Group ${_hoveredGroupLetter} <span style="font-family:var(--mono);font-size:10px;font-weight:400;color:var(--mut2);letter-spacing:.08em">R32 ODDS</span></h3>`+paintGroupAdvChart(_hoveredGroupLetter,hist);
+}
+
+function paintGroupAdvChart(letter,advHistory){
+  const teams=GROUPS[letter];
+  const W=260,H=140,pL=28,pR=8,pT=10,pB=26;
+  const pw=W-pL-pR,ph=H-pT-pB;
+  const xs=i=>pL+i/(GRP_AXIS.length-1)*pw;
+  const yr=v=>pT+ph-(v*ph);
+  // Axis sections (label positions)
+  const secKeys=['Jun 17','Jun 23','Jun 27'];
+  const secCx={};
+  let prev=0;
+  GRP_AXIS.forEach((e,i)=>{if(secKeys.includes(e.key)){secCx[e.key]=(xs(prev)+xs(i))/2;prev=i;}});
+  let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block">`;
+  // Grid lines at 25/50/75/100%
+  [0.25,0.5,0.75,1].forEach(v=>{
+    const y=yr(v).toFixed(1);
+    svg+=`<line x1="${pL}" y1="${y}" x2="${W-pR}" y2="${y}" stroke="#1d232b" stroke-width="1"/>`;
+    svg+=`<text x="${pL-3}" y="${(+y+3.5).toFixed(1)}" fill="#5c6775" font-size="8" text-anchor="end">${Math.round(v*100)}%</text>`;
+  });
+  // X-axis ticks and section labels
+  GRP_AXIS.forEach((e,i)=>{
+    const x=xs(i).toFixed(1);
+    if(secKeys.includes(e.key)){
+      svg+=`<line x1="${x}" y1="${pT+ph}" x2="${x}" y2="${pT+ph+5}" stroke="#5c6775" stroke-width="1"/>`;
+    }else{
+      svg+=`<line x1="${x}" y1="${pT+ph}" x2="${x}" y2="${pT+ph+3}" stroke="#3a4452" stroke-width="1"/>`;
+    }
+  });
+  ['Jun 17','Jun 23','Jun 27'].forEach(k=>{
+    if(secCx[k]!=null)svg+=`<text x="${secCx[k].toFixed(1)}" y="${H-2}" fill="#5c6775" font-size="8" text-anchor="middle">${k==='Jun 17'?'Round 1':k==='Jun 23'?'Round 2':'Round 3'}</text>`;
+  });
+  // One line per team
+  teams.forEach(t=>{
+    const col=ownerColor(t);
+    const dpts=GRP_AXIS.map((e,i)=>{
+      const snap=advHistory[e.key];
+      return (snap&&snap[t]!=null)?{i,v:snap[t]}:null;
+    }).filter(Boolean);
+    if(dpts.length<2)return;
+    const pts2=dpts.map(d=>({x:+xs(d.i).toFixed(1),y:+yr(d.v).toFixed(1)}));
+    svg+=`<path d="${monotonePath(pts2)}" fill="none" stroke="${col}" stroke-width="1.2" stroke-linecap="round" opacity="0.85"/>`;
+  });
+  svg+='</svg>';
+  // Team legend below chart
+  const legend=teams.map(t=>{
+    const col=ownerColor(t);
+    const last=Object.keys(advHistory).sort((a,b)=>_grpDk(a)-_grpDk(b)).at(-1);
+    const pct=advHistory[last]?Math.round((advHistory[last][t]??0)*100):null;
+    return `<span style="display:flex;align-items:center;gap:4px;color:${col};font-size:11px;font-family:var(--mono);white-space:nowrap">`+
+      `<span style="width:12px;height:2px;background:${col};border-radius:2px;display:inline-block;flex-shrink:0"></span>`+
+      `${t}${pct!=null?' '+pct+'%':''}</span>`;
+  }).join('');
+  return `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px">${legend}</div>${svg}`;
 }
 
 let _simOdds=null,_simKey='';
@@ -613,7 +693,7 @@ function getSimOdds(){
     const winners=Object.keys(PLAYERS).filter(p=>totals[p]===max);
     _simOdds=Object.fromEntries(Object.keys(PLAYERS).map(p=>[p,winners.includes(p)?1/winners.length:0]));
   }else{
-    _simOdds=runMonteCarlo(10000,key);
+    _simOdds=runMonteCarlo(10000,key).playerOdds;
   }
   _simKey=key;
   return _simOdds;
@@ -625,6 +705,7 @@ function runMonteCarlo(N,seedStr){
   s=(s>>>0)||1;
   _rng=()=>{s^=s<<13;s^=s>>17;s^=s<<5;return(s>>>0)/4294967296;};
   const wc={};Object.keys(PLAYERS).forEach(p=>wc[p]=0);
+  const adv={};Object.keys(TEAMS).forEach(t=>adv[t]=0);
   const knownKO=new Map();
   R.koGames.forEach(g=>{
     if(g.winner&&g.a&&g.b){knownKO.set(g.a+'|'+g.b,g.winner);knownKO.set(g.b+'|'+g.a,g.winner);}
@@ -672,6 +753,8 @@ function runMonteCarlo(N,seedStr){
     allThirds.sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
     const best8=allThirds.slice(0,8);
     best8.forEach(x=>{const o=TEAMS[x.team].o;if(o)S[o]+=SCORING.advance;});
+    // Track per-team R32 advancement
+    gWinners.forEach(t=>adv[t]++);gRunners.forEach(t=>adv[t]++);best8.forEach(x=>adv[x.team]++);
 
     // Look up exact R32 third-place slot assignments from FIFA table
     const top8key=best8.map(x=>x.grp).sort().join('');
@@ -742,7 +825,10 @@ function runMonteCarlo(N,seedStr){
     wc[pw]++;
   }
 
-  return Object.fromEntries(Object.keys(wc).map(p=>[p,wc[p]/N]));
+  return {
+    playerOdds: Object.fromEntries(Object.keys(wc).map(p=>[p,wc[p]/N])),
+    teamAdv: Object.fromEntries(Object.keys(TEAMS).map(t=>[t,adv[t]/N]))
+  };
 }
 
 /* ========================= STATE ========================= */
@@ -891,10 +977,33 @@ function renderGroups(){
           <span class="nm ${t.o?'':'undr'}">${r.team}</span><span class="own">${own}</span></div></td>
         <td class="num">${r.pl}</td><td class="num">${r.gd>0?'+':''}${r.gd}</td><td class="pt">${r.pts}</td>${pctCell}</tr>`;
     });
-    card.innerHTML=`<h3>Group ${L}<span class="st ${s.complete?'done':''}">${s.complete?'final':s.played+'/6'}</span></h3>
+    const tableHTML=`<h3>Group ${L}<span class="st ${s.complete?'done':''}">${s.complete?'final':s.played+'/6'}</span></h3>
       <table class="std"><thead><tr style="opacity:.45;font-size:10px;font-family:var(--mono)">
         <td></td><td class="num">Pl</td><td class="num">GD</td><td class="pt">Pts</td><td class="adv-pct">R32%</td>
       </tr></thead>${rows}</table>`;
+    card.innerHTML=tableHTML;
+    card.style.cursor='pointer';
+    let _cleanupTrans=null,_tableH=0;
+    card.addEventListener('mouseenter',()=>{
+      if(_cleanupTrans){card.removeEventListener('transitionend',_cleanupTrans);_cleanupTrans=null;}
+      _hoveredGroupCard=card; _hoveredGroupLetter=L;
+      if(!card.style.height)_tableH=card.offsetHeight; // only measure when at natural height
+      card.innerHTML=`<h3 style="margin-bottom:8px">Group ${L} <span style="font-family:var(--mono);font-size:10px;font-weight:400;color:var(--mut2);letter-spacing:.08em">R32 ODDS</span></h3>`+paintGroupAdvChart(L,getAdvHistory());
+      const endH=card.scrollHeight;
+      card.style.height=_tableH+'px';
+      card.offsetHeight; // force reflow so transition fires
+      card.style.height=endH+'px';
+    });
+    card.addEventListener('mouseleave',()=>{
+      _hoveredGroupCard=null; _hoveredGroupLetter=null;
+      const startH=card.offsetHeight;
+      card.innerHTML=tableHTML;
+      card.style.height=startH+'px';
+      card.offsetHeight; // force reflow
+      card.style.height=_tableH+'px'; // animate back to stored table height
+      _cleanupTrans=()=>{card.style.height='';_cleanupTrans=null;};
+      card.addEventListener('transitionend',_cleanupTrans,{once:true});
+    });
     host.appendChild(card);
   });
 }
@@ -1022,143 +1131,125 @@ function renderBracket(){
 
 /* ----- odds history ----- */
 let _oddsHistory=null,_oddsHistoryKey='',_oddsJobId=0;
-function getOddsHistory(){
-  const key=stateKey(R);
-  if(key===_oddsHistoryKey&&_oddsHistory)return _oddsHistory;
-  _oddsHistory=computeOddsHistory();
-  _oddsHistoryKey=key;
-  return _oddsHistory;
-}
-function computeOddsHistory(){
-  const savedR=R;
-  const N=5000;
+let _hoveredGroupCard=null,_hoveredGroupLetter=null;
+
+// Build ordered list of simulation checkpoints from the current results state.
+// Returns [{key, state}] in chronological order (Pre → group days → KO days).
+// Also returns pairDate map (team-pair→date) needed for live-point logic.
+function buildSimCheckpoints(savedR){
   function dateKey(d){
     if(!d)return 999;
     const[mon,day]=d.split(' ');
     return(mon==='Jul'?100:0)+parseInt(day);
   }
-  function simAt(state){
-    R=state;
-    try{return runMonteCarlo(N,JSON.stringify(state));}
-    finally{R=savedR;}
-  }
-  const pts=[];
-  // Pre-tournament baseline
-  pts.push({key:'Pre',odds:simAt({groupGames:{},koGames:[],goldenBoot:null,thirdPlace:null})});
-  // Group stage: one checkpoint per calendar date where all matches that day are complete
+  const cps=[];
+  const pairDate=new Map();
+  cps.push({key:'Pre',state:{groupGames:{},koGames:[],goldenBoot:null,thirdPlace:null}});
   const playedDates=[...new Set(Object.keys(savedR.groupGames).map(k=>MATCH_DATES[k]).filter(Boolean))];
   playedDates.sort((a,b)=>dateKey(a)-dateKey(b));
   let prevGGkey='';
   playedDates.forEach(date=>{
     const allOnDate=Object.keys(MATCH_DATES).filter(k=>MATCH_DATES[k]===date);
-    const allComplete=allOnDate.every(k=>{
-      const r=savedR.groupGames[k];
-      return r&&r.hg!=null&&r.ag!=null&&r.hg!==''&&r.ag!==''&&!Number.isNaN(+r.hg)&&!Number.isNaN(+r.ag);
-    });
+    const allComplete=allOnDate.every(k=>{const r=savedR.groupGames[k];return r&&r.hg!=null&&r.ag!=null&&r.hg!==''&&r.ag!==''&&!Number.isNaN(+r.hg)&&!Number.isNaN(+r.ag);});
     if(!allComplete)return;
     const maxDk=dateKey(date);
     const gg={};
     Object.entries(savedR.groupGames).forEach(([k,v])=>{if(dateKey(MATCH_DATES[k])<=maxDk)gg[k]=v;});
-    const key=JSON.stringify(gg);
-    if(key===prevGGkey)return;
-    prevGGkey=key;
-    pts.push({key:date,odds:simAt({groupGames:gg,koGames:[],goldenBoot:null,thirdPlace:null})});
+    const key=JSON.stringify(gg); if(key===prevGGkey)return; prevGGkey=key;
+    cps.push({key:date,state:{groupGames:gg,koGames:[],goldenBoot:null,thirdPlace:null}});
   });
-  // KO stage: per-day checkpoints — all games on that calendar day must have a winner
-  // _koPairDate is lifted to function scope so the live-point block can scan KO dates too
-  const _koPairDate=new Map();
   if(savedR.koGames.some(g=>g.winner)||savedR.thirdPlace){
     const{r32,r16,qf,sf,fin:finBkt}=buildCurrentBracket();
-    // Map each bracket position to its date, and build a date→games index
     const dateGames=new Map();
-    const addRound=(matches,dates,rd)=>matches.forEach((m,i)=>{
-      if(!m.a||!m.b)return;
-      const d=dates[i]; if(!d)return;
-      if(!dateGames.has(d))dateGames.set(d,[]);
-      dateGames.get(d).push({a:m.a,b:m.b,rd});
+    const addRound=(matches,dates)=>matches.forEach((m,i)=>{
+      if(!m.a||!m.b)return; const d=dates[i]; if(!d)return;
+      if(!dateGames.has(d))dateGames.set(d,[]); dateGames.get(d).push({a:m.a,b:m.b});
     });
-    addRound(r32,KO_DATES.r32,'R32'); addRound(r16,KO_DATES.r16,'R16');
-    addRound(qf,KO_DATES.qf,'QF'); addRound(sf,KO_DATES.sf,'SF');
-    addRound(finBkt,KO_DATES.fin,'F');
-    // Reverse lookup: team-pair → date (both orders)
-    const pairDate=_koPairDate;
-    dateGames.forEach((games,date)=>games.forEach(({a,b})=>{
-      pairDate.set(a+'|'+b,date); pairDate.set(b+'|'+a,date);
-    }));
+    addRound(r32,KO_DATES.r32); addRound(r16,KO_DATES.r16);
+    addRound(qf,KO_DATES.qf); addRound(sf,KO_DATES.sf); addRound(finBkt,KO_DATES.fin);
+    dateGames.forEach((games,date)=>games.forEach(({a,b})=>{pairDate.set(a+'|'+b,date);pairDate.set(b+'|'+a,date);}));
     const sortedKODates=[...dateGames.keys()].sort((a,b)=>dateKey(a)-dateKey(b));
     let prevKOState='';
     sortedKODates.forEach(date=>{
       const games=dateGames.get(date);
-      const allComplete=games.every(({a,b})=>{
-        const g=savedR.koGames.find(x=>(x.a===a&&x.b===b)||(x.a===b&&x.b===a));
-        return g&&g.winner;
-      });
+      const allComplete=games.every(({a,b})=>{const g=savedR.koGames.find(x=>(x.a===a&&x.b===b)||(x.a===b&&x.b===a));return g&&g.winner;});
       if(!allComplete)return;
       const maxDk=dateKey(date);
-      const ko=savedR.koGames.filter(g=>{
-        const d=pairDate.get(g.a+'|'+g.b);
-        return d&&dateKey(d)<=maxDk&&g.winner;
-      });
+      const ko=savedR.koGames.filter(g=>{const d=pairDate.get(g.a+'|'+g.b);return d&&dateKey(d)<=maxDk&&g.winner;});
       const hasFin=ko.some(g=>g.round==='F');
-      const stateKey=JSON.stringify(ko);
-      if(stateKey===prevKOState)return;
-      prevKOState=stateKey;
-      pts.push({key:date,odds:simAt({
-        groupGames:savedR.groupGames, koGames:ko,
-        goldenBoot:hasFin?savedR.goldenBoot:null,
-        thirdPlace:hasFin?savedR.thirdPlace:null
-      })});
+      const sk=JSON.stringify(ko); if(sk===prevKOState)return; prevKOState=sk;
+      cps.push({key:date,state:{groupGames:savedR.groupGames,koGames:ko,goldenBoot:hasFin?savedR.goldenBoot:null,thirdPlace:hasFin?savedR.thirdPlace:null}});
     });
-    // 3rd place (Jul 18) — stored in R.thirdPlace, not koGames
     const sfDone=savedR.koGames.filter(g=>g.round==='SF'&&g.winner).length>=2;
-    if(sfDone&&savedR.thirdPlace&&!pts.some(p=>p.key==='Jul 18')){
+    if(sfDone&&savedR.thirdPlace&&!cps.some(c=>c.key==='Jul 18')){
       const koSF=savedR.koGames.filter(g=>['R32','R16','QF','SF'].includes(g.round)&&g.winner);
-      pts.push({key:'Jul 18',odds:simAt({
-        groupGames:savedR.groupGames, koGames:koSF,
-        goldenBoot:null, thirdPlace:savedR.thirdPlace
-      })});
+      cps.push({key:'Jul 18',state:{groupGames:savedR.groupGames,koGames:koSF,goldenBoot:null,thirdPlace:savedR.thirdPlace}});
     }
   }
-  // When the Final is decided, the pool outcome is certain — compute scores directly
-  // instead of relying on the simulation (which can only approximate via bracket matching)
-  if(savedR.koGames.some(g=>g.round==='F'&&g.winner)){
-    const S=scores(); // R is still savedR here
-    const totals=Object.fromEntries(Object.keys(PLAYERS).map(p=>[p,S[p].total]));
-    const max=Math.max(...Object.values(totals));
-    const winners=Object.keys(PLAYERS).filter(p=>totals[p]===max);
-    const odds=Object.fromEntries(Object.keys(PLAYERS).map(p=>[p,winners.includes(p)?1/winners.length:0.0]));
-    const idx=pts.findIndex(p=>p.key==='Jul 19');
-    if(idx>=0)pts[idx]={key:'Jul 19',odds};
-    else pts.push({key:'Jul 19',odds});
-  }
+  return {cps,pairDate};
+}
+
+// Progressive simulation — runs all checkpoints in background via setTimeout.
+// Populates _oddsHistory with {key, odds, teamAdv} entries as they complete.
+// renderOdds() and getAdvHistory() both read from _oddsHistory.
+function scheduleSimHistory(){
+  const cacheKey=stateKey(R);
+  if(cacheKey===_oddsHistoryKey&&_oddsHistory)return;
+  _oddsHistory=null; _oddsHistoryKey='';
+  const savedR=R;
+  const jobId=++_oddsJobId;
+  const {cps,pairDate:_spd}=buildSimCheckpoints(savedR);
+  const N=5000;
+  const pts=[];
   const _axisIdx=Object.fromEntries(CHART_AXIS.map((e,i)=>[e.key,i]));
-  pts.sort((a,b)=>(_axisIdx[a.key]??999)-(_axisIdx[b.key]??999));
-  // Live point: placed at the latest date with any entered data (group, KO, or thirdPlace).
-  // This means: if today's day is fully done → live point AT that day;
-  // if today's day is partial → live point advances to that partial date.
-  // Works for both group stage and KO stage.
-  const hasData=Object.keys(savedR.groupGames).length>0||savedR.koGames.some(g=>g.winner)||!!savedR.thirdPlace;
-  if(hasData){
-    const liveOdds=getSimOdds();
-    let latestDataIdx=-1;
-    Object.keys(savedR.groupGames).forEach(k=>{
-      const di=_axisIdx[MATCH_DATES[k]]??-1;
-      if(di>latestDataIdx)latestDataIdx=di;
-    });
-    savedR.koGames.forEach(g=>{
-      if(!g.winner)return;
-      const d=_koPairDate.get(g.a+'|'+g.b);
-      if(d){const di=_axisIdx[d]??-1;if(di>latestDataIdx)latestDataIdx=di;}
-    });
-    if(savedR.thirdPlace){const di=_axisIdx['Jul 18']??-1;if(di>latestDataIdx)latestDataIdx=di;}
-    if(latestDataIdx>=0){
-      const liveKey=CHART_AXIS[latestDataIdx].key;
-      const ei=pts.findIndex(p=>p.key===liveKey);
-      if(ei>=0)pts[ei]={key:liveKey,odds:liveOdds};
-      else{pts.push({key:liveKey,odds:liveOdds});pts.sort((a,b)=>(_axisIdx[a.key]??999)-(_axisIdx[b.key]??999));}
+  let cpIdx=0;
+  function tick(){
+    if(_oddsJobId!==jobId)return;
+    if(cpIdx<cps.length){
+      const cp=cps[cpIdx++];
+      const prevR=R,prevElo=ELO;
+      R=cp.state; ELO=eloSnapshotFor(cp.key);
+      const {playerOdds,teamAdv}=runMonteCarlo(N,stateKey(cp.state)+(cp.key||''));
+      R=prevR; ELO=prevElo;
+      pts.push({key:cp.key,odds:playerOdds,teamAdv});
+      const partial=[...pts].sort((a,b)=>(_axisIdx[a.key]??999)-(_axisIdx[b.key]??999));
+      const host=document.getElementById('oddsroot');
+      if(host)paintOddsChart(host,partial);
+      repaintHoveredGroup(partial);
+      setTimeout(tick,0);
+    }else{
+      if(savedR.koGames.some(g=>g.round==='F'&&g.winner)){
+        const S=scores();
+        const totals=Object.fromEntries(Object.keys(PLAYERS).map(p=>[p,S[p].total]));
+        const max=Math.max(...Object.values(totals));
+        const winners=Object.keys(PLAYERS).filter(p=>totals[p]===max);
+        const odds=Object.fromEntries(Object.keys(PLAYERS).map(p=>[p,winners.includes(p)?1/winners.length:0]));
+        const ei=pts.findIndex(p=>p.key==='Jul 19');
+        if(ei>=0)pts[ei]={...pts[ei],odds};else pts.push({key:'Jul 19',odds,teamAdv:{}});
+      }
+      pts.sort((a,b)=>(_axisIdx[a.key]??999)-(_axisIdx[b.key]??999));
+      const hasData=Object.keys(savedR.groupGames).length>0||savedR.koGames.some(g=>g.winner)||!!savedR.thirdPlace;
+      if(hasData){
+        const liveOdds=getSimOdds();
+        let latestIdx=-1;
+        Object.keys(savedR.groupGames).forEach(k=>{const di=_axisIdx[MATCH_DATES[k]]??-1;if(di>latestIdx)latestIdx=di;});
+        savedR.koGames.forEach(g=>{if(!g.winner)return;const d=_spd.get(g.a+'|'+g.b);if(d){const di=_axisIdx[d]??-1;if(di>latestIdx)latestIdx=di;}});
+        if(savedR.thirdPlace){const di=_axisIdx['Jul 18']??-1;if(di>latestIdx)latestIdx=di;}
+        if(latestIdx>=0){
+          const lk=CHART_AXIS[latestIdx].key;
+          const ei=pts.findIndex(p=>p.key===lk);
+          const liveEntry={key:lk,odds:liveOdds,teamAdv:pts[ei]?.teamAdv??{},live:true};
+          if(ei>=0)pts[ei]=liveEntry;else{pts.push(liveEntry);pts.sort((a,b)=>(_axisIdx[a.key]??999)-(_axisIdx[b.key]??999));}
+        }
+      }
+      _oddsHistory=pts; _oddsHistoryKey=cacheKey;
+      const host=document.getElementById('oddsroot');
+      if(host)paintOddsChart(host,pts);
+      repaintHoveredGroup(pts);
+      renderGroups();
     }
   }
-  return pts;
+  setTimeout(tick,0);
 }
 // Monotone cubic interpolation (Fritsch-Carlson) — no overshoot at any data point
 function monotonePath(pts){
@@ -1183,7 +1274,9 @@ function monotonePath(pts){
   return d;
 }
 function paintOddsChart(host,history){
-  const histMap={};history.forEach(h=>histMap[h.key]=h.odds);
+  const liveEntry=history.find(h=>h.live);
+  const cutoffI=liveEntry?CHART_AXIS.findIndex(e=>e.key===liveEntry.key):CHART_AXIS.length-1;
+  const histMap={};history.forEach(h=>{if(cutoffI<0||CHART_AXIS.findIndex(e=>e.key===h.key)<=cutoffI)histMap[h.key]=h.odds;});
   const n=CHART_AXIS.length;
   const W=680,H=260,pL=38,pR=16,pT=16,pB=36;
   const pw=W-pL-pR,ph=H-pT-pB;
@@ -1219,108 +1312,28 @@ function paintOddsChart(host,history){
     }
   });
   svg+=`</svg>`;
-  const last=history[history.length-1];
-  const sorted=last?[...players].sort((a,b)=>last.odds[b]-last.odds[a]):[...players];
-  const legend=sorted.map(p=>`<span style="color:${PLAYERS[p].c};display:flex;align-items:center;gap:5px"><span style="width:16px;height:2px;background:${PLAYERS[p].c};display:inline-block;border-radius:2px"></span>${p}${last?` ${(last.odds[p]*100).toFixed(1)}%`:''}</span>`).join('');
+  const curOdds=_simOdds;
+  const sorted=curOdds?[...players].sort((a,b)=>(curOdds[b]||0)-(curOdds[a]||0)):[...players];
+  const legend=sorted.map(p=>`<span style="color:${PLAYERS[p].c};display:flex;align-items:center;gap:5px"><span style="width:16px;height:2px;background:${PLAYERS[p].c};display:inline-block;border-radius:2px"></span>${p}${curOdds?` ${((curOdds[p]||0)*100).toFixed(1)}%`:''}</span>`).join('');
   host.innerHTML=`<div style="display:flex;gap:20px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;margin-bottom:12px">${legend}</div>${svg}<p class="odds-note">Win % from 5,000-run Monte Carlo at each matchday snapshot</p>`;
+}
+function renderEloBox(){
+  const box=document.getElementById('elo-box-root');
+  const grid=document.getElementById('elo-grid');
+  if(!box||!grid||!Object.keys(ELO).length)return;
+  const sorted=Object.entries(ELO).sort((a,b)=>b[1]-a[1]);
+  grid.innerHTML=sorted.map(([team,rating])=>{
+    const isHome=HOME_TEAMS.has(team);
+    return `<div class="elo-row"><span class="elo-name">${team}</span><span class="elo-val">${rating}${isHome?'<span class="elo-home">+100</span>':''}</span></div>`;
+  }).join('');
+  box.style.display='';
 }
 function renderOdds(){
   const host=document.getElementById("oddsroot"); if(!host)return;
-  // Cache hit — paint immediately
-  const cacheKey=stateKey(R);
-  if(cacheKey===_oddsHistoryKey&&_oddsHistory){paintOddsChart(host,_oddsHistory);return;}
-  const savedR=R;
-  function dk(d){if(!d)return 999;const[mon,day]=d.split(' ');return(mon==='Jul'?100:0)+parseInt(day);}
-  function simAt(state){const prev=R;R=state;try{return runMonteCarlo(5000,stateKey(state));}finally{R=prev;}}
-  // Build checkpoint list (fast — no simulation yet)
-  const cps=[];
-  cps.push({key:'Pre',state:{groupGames:{},koGames:[],goldenBoot:null,thirdPlace:null}});
-  const playedDates=[...new Set(Object.keys(savedR.groupGames).map(k=>MATCH_DATES[k]).filter(Boolean))];
-  playedDates.sort((a,b)=>dk(a)-dk(b));
-  let prevGGkey='';
-  playedDates.forEach(date=>{
-    const allOnDate=Object.keys(MATCH_DATES).filter(k=>MATCH_DATES[k]===date);
-    const allComplete=allOnDate.every(k=>{const r=savedR.groupGames[k];return r&&r.hg!=null&&r.ag!=null&&r.hg!==''&&r.ag!==''&&!Number.isNaN(+r.hg)&&!Number.isNaN(+r.ag);});
-    if(!allComplete)return;
-    const maxDk=dk(date);
-    const gg={};
-    Object.entries(savedR.groupGames).forEach(([k,v])=>{if(dk(MATCH_DATES[k])<=maxDk)gg[k]=v;});
-    const key=JSON.stringify(gg); if(key===prevGGkey)return; prevGGkey=key;
-    cps.push({key:date,state:{groupGames:gg,koGames:[],goldenBoot:null,thirdPlace:null}});
-  });
-  const _koPairDate=new Map();
-  if(savedR.koGames.some(g=>g.winner)||savedR.thirdPlace){
-    const{r32,r16,qf,sf,fin:finBkt}=buildCurrentBracket();
-    const dateGames=new Map();
-    const addRound=(matches,dates,rd)=>matches.forEach((m,i)=>{
-      if(!m.a||!m.b)return; const d=dates[i]; if(!d)return;
-      if(!dateGames.has(d))dateGames.set(d,[]); dateGames.get(d).push({a:m.a,b:m.b,rd});
-    });
-    addRound(r32,KO_DATES.r32,'R32'); addRound(r16,KO_DATES.r16,'R16');
-    addRound(qf,KO_DATES.qf,'QF'); addRound(sf,KO_DATES.sf,'SF');
-    addRound(finBkt,KO_DATES.fin,'F');
-    const pd=_koPairDate;
-    dateGames.forEach((games,date)=>games.forEach(({a,b})=>{pd.set(a+'|'+b,date);pd.set(b+'|'+a,date);}));
-    const sortedKODates=[...dateGames.keys()].sort((a,b)=>dk(a)-dk(b));
-    let prevKOState='';
-    sortedKODates.forEach(date=>{
-      const games=dateGames.get(date);
-      const allComplete=games.every(({a,b})=>{const g=savedR.koGames.find(x=>(x.a===a&&x.b===b)||(x.a===b&&x.b===a));return g&&g.winner;});
-      if(!allComplete)return;
-      const maxDk=dk(date);
-      const ko=savedR.koGames.filter(g=>{const d=pd.get(g.a+'|'+g.b);return d&&dk(d)<=maxDk&&g.winner;});
-      const hasFin=ko.some(g=>g.round==='F');
-      const stateKey=JSON.stringify(ko); if(stateKey===prevKOState)return; prevKOState=stateKey;
-      cps.push({key:date,state:{groupGames:savedR.groupGames,koGames:ko,goldenBoot:hasFin?savedR.goldenBoot:null,thirdPlace:hasFin?savedR.thirdPlace:null}});
-    });
-    const sfDone=savedR.koGames.filter(g=>g.round==='SF'&&g.winner).length>=2;
-    if(sfDone&&savedR.thirdPlace&&!cps.some(c=>c.key==='Jul 18')){
-      const koSF=savedR.koGames.filter(g=>['R32','R16','QF','SF'].includes(g.round)&&g.winner);
-      cps.push({key:'Jul 18',state:{groupGames:savedR.groupGames,koGames:koSF,goldenBoot:null,thirdPlace:savedR.thirdPlace}});
-    }
-  }
-  // Progressive simulation — one checkpoint per event loop tick
-  const pts=[];
-  let cpIdx=0;
-  const jobId=++_oddsJobId;
-  const _axisIdx=Object.fromEntries(CHART_AXIS.map((e,i)=>[e.key,i]));
-  paintOddsChart(host,[]); // show empty axes immediately
-  function step(){
-    if(_oddsJobId!==jobId)return; // cancelled by tab switch or re-render
-    if(cpIdx<cps.length){
-      const cp=cps[cpIdx++];
-      pts.push({key:cp.key,odds:simAt(cp.state)});
-      const partial=[...pts].sort((a,b)=>(_axisIdx[a.key]??999)-(_axisIdx[b.key]??999));
-      paintOddsChart(host,partial);
-      setTimeout(step,0);
-    }else{
-      // Finalize: Final deterministic override, sort, live point
-      if(savedR.koGames.some(g=>g.round==='F'&&g.winner)){
-        const S=scores();
-        const totals=Object.fromEntries(Object.keys(PLAYERS).map(p=>[p,S[p].total]));
-        const max=Math.max(...Object.values(totals));
-        const winners=Object.keys(PLAYERS).filter(p=>totals[p]===max);
-        const odds=Object.fromEntries(Object.keys(PLAYERS).map(p=>[p,winners.includes(p)?1/winners.length:0.0]));
-        const ei=pts.findIndex(p=>p.key==='Jul 19');
-        if(ei>=0)pts[ei]={key:'Jul 19',odds};else pts.push({key:'Jul 19',odds});
-      }
-      pts.sort((a,b)=>(_axisIdx[a.key]??999)-(_axisIdx[b.key]??999));
-      {
-        const liveOdds=getSimOdds();
-        let latestDataIdx=_axisIdx['Pre']??0; // default to Pre when no real data yet
-        Object.keys(savedR.groupGames).forEach(k=>{const di=_axisIdx[MATCH_DATES[k]]??-1;if(di>latestDataIdx)latestDataIdx=di;});
-        savedR.koGames.forEach(g=>{if(!g.winner)return;const d=_koPairDate.get(g.a+'|'+g.b);if(d){const di=_axisIdx[d]??-1;if(di>latestDataIdx)latestDataIdx=di;}});
-        if(savedR.thirdPlace){const di=_axisIdx['Jul 18']??-1;if(di>latestDataIdx)latestDataIdx=di;}
-        const liveKey=CHART_AXIS[latestDataIdx].key;
-        const ei=pts.findIndex(p=>p.key===liveKey);
-        if(ei>=0)pts[ei]={key:liveKey,odds:liveOdds};
-        else{pts.push({key:liveKey,odds:liveOdds});pts.sort((a,b)=>(_axisIdx[a.key]??999)-(_axisIdx[b.key]??999));}
-      }
-      _oddsHistory=pts; _oddsHistoryKey=cacheKey;
-      paintOddsChart(host,pts);
-    }
-  }
-  setTimeout(step,0);
+  // Paint whatever is available immediately, then let scheduleSimHistory fill it in
+  if(_oddsHistory)paintOddsChart(host,_oddsHistory);
+  else paintOddsChart(host,[]);
+  scheduleSimHistory();
 }
 
 /* ----- points history chart ----- */
@@ -1512,6 +1525,13 @@ function renderCommGroups(){
 }
 function renderCommKO(){
   const host=document.getElementById("commKO"); host.innerHTML="";
+  const errs=validateResults(R);
+  if(errs.length){
+    const box=document.createElement('div');
+    box.style.cssText='background:rgba(255,80,80,.1);border:1px solid rgba(255,80,80,.35);border-radius:8px;padding:10px 13px;margin-bottom:14px;font-size:11px;line-height:1.7;color:#ff8a8a;font-family:var(--mono)';
+    box.innerHTML='⚠ Score/winner mismatches:<br>'+errs.map(e=>`· ${e}`).join('<br>');
+    host.appendChild(box);
+  }
   const{r32,r16,qf,sf,fin,third}=buildCurrentBracket();
   const gameFor=(a,b)=>a&&b?R.koGames.find(x=>(x.a===a&&x.b===b)||(x.a===b&&x.b===a)):null;
   const resultFor=(a,b)=>{const g=gameFor(a,b);return g?g.winner||'':''};
@@ -1557,7 +1577,7 @@ function renderCommKO(){
     });
     host.appendChild(sec);
   });
-  if(!anyShown)host.innerHTML=`<div class="empty">KO bracket populates once group stage results are entered.</div>`;
+  if(!anyShown){const emp=document.createElement('div');emp.className='empty';emp.textContent='KO bracket populates once group stage results are entered.';host.appendChild(emp);}
   host.querySelectorAll('select').forEach(sel=>sel.addEventListener('change',e=>{
     const{a,b,key}=e.target.dataset; const winner=e.target.value;
     if(key==='3P'){
@@ -1597,6 +1617,33 @@ function _renderLiveTally(S){
     const pct=_simOdds?` <span style="opacity:.55">(${(_simOdds[p]*100).toFixed(1)}%)</span>`:'';
     return `${i+1}. <b style="color:${PLAYERS[p].color}">${p}</b> ${S[p].total}${pct}`;
   }).join(" · ");
+}
+function validateResults(r){
+  const errs=[];
+  const checkGame=(label,hg,ag,winner,teamA,teamB,penHg,penAg)=>{
+    if(hg==null||ag==null)return;
+    if((penHg!=null||penAg!=null)&&hg!==ag)
+      errs.push(`${label}: penalty scores recorded but goals aren't level (${hg}–${ag})`);
+    if(!winner)return;
+    if(hg>ag&&winner!==teamA)
+      errs.push(`${label}: ${teamA} leads ${hg}–${ag} but winner is ${winner}`);
+    else if(ag>hg&&winner!==teamB)
+      errs.push(`${label}: ${teamB} leads ${ag}–${hg} but winner is ${winner}`);
+    else if(hg===ag){
+      if(penHg==null||penAg==null)
+        errs.push(`${label}: draw ${hg}–${ag} with winner set but no penalty scores`);
+      else if(penHg>penAg&&winner!==teamA)
+        errs.push(`${label}: ${teamA} wins pens ${penHg}–${penAg} but winner is ${winner}`);
+      else if(penAg>penHg&&winner!==teamB)
+        errs.push(`${label}: ${teamB} wins pens ${penAg}–${penHg} but winner is ${winner}`);
+    }
+  };
+  r.koGames.forEach(g=>checkGame(`${g.round} ${g.a} vs ${g.b}`,g.hg,g.ag,g.winner,g.a,g.b,g.penHg,g.penAg));
+  if(r.thirdPlaceGame){
+    const g=r.thirdPlaceGame;
+    checkGame(`3rd Place ${g.a} vs ${g.b}`,g.hg,g.ag,r.thirdPlace,g.a,g.b,null,null);
+  }
+  return errs;
 }
 function liveTally(){
   // Delay render until simulation completes so points and odds update together
@@ -1649,7 +1696,7 @@ function importFile(file){
       const errs=validateKO(obj.koGames);
       if(errs.length){alert("Import blocked — bracket inconsistency:\n\n"+errs.slice(0,5).join("\n")+(errs.length>5?`\n…and ${errs.length-5} more`:''));return;}
       R={groupGames:obj.groupGames||{},koGames:obj.koGames||[],goldenBoot:obj.goldenBoot??null,thirdPlace:obj.thirdPlace??null,thirdPlaceGame:obj.thirdPlaceGame??null};
-      renderAll(); markDirty();
+      renderAll(); scheduleSimHistory(); markDirty();
     }catch(err){alert("Could not read that file. Expecting a results.js / JSON export.");}
   };
   fr.readAsText(file);
@@ -1670,7 +1717,8 @@ function renderScoringDisplays(){
   const gb=document.getElementById('gb-pts');
   if(gb)gb.textContent='+'+SCORING.goldenBoot;
 }
-function renderAll(){renderScoringDisplays();renderBoard();renderPoints();renderBracket();renderGroups();renderKO();renderCommGroups();renderCommKO();renderAwards();liveTally();}
+
+function renderAll(){renderScoringDisplays();renderBoard();renderPoints();renderBracket();renderGroups();renderKO();renderCommGroups();renderCommKO();renderAwards();liveTally();renderEloBox();}
 function switchTab(name,updateUrl=true){
   const b=document.querySelector('.tab[data-v="'+name+'"]'); if(!b)return;
   if(updateUrl)history.replaceState(null,'','?'+name);
@@ -1698,15 +1746,19 @@ function fmtTimestamp(iso){
 const updStr=R.lastUpdated?`Results last synced <b style='color:#eef2f6'>${fmtTimestamp(R.lastUpdated)}</b> · `:'';
 document.getElementById("foot").innerHTML=`${updStr}Static site · no backend. Results live in <b style='color:#eef2f6'>results.js</b> — the file everyone's dashboard reads. Update it via the Matches tab → Export, or edit it directly and push to GitHub.`;
 Promise.all([
-  fetch('elo.json').then(r=>r.json()).catch(()=>({})),
-  fetch('draft.json').then(r=>r.json()).catch(()=>({players:{},teams:{}}))
-]).then(([eloData,draftData])=>{
-  ELO=eloData;
+  fetch('draft.json').then(r=>r.json()).catch(()=>({players:{},teams:{}})),
+  fetch('elo-history.json').then(r=>r.json()).catch(()=>({}))
+]).then(([draftData,historyData])=>{
+  ELO_HISTORY=historyData;
+  const latestDate=Object.keys(historyData).sort().at(-1);
+  ELO=latestDate?historyData[latestDate]:{};
   if(draftData.players)PLAYERS=draftData.players;
   if(draftData.teams)TEAMS=draftData.teams;
   GROUP_LETTERS.forEach(L=>{GROUPS[L]=[];});
   Object.keys(TEAMS).forEach(t=>GROUPS[TEAMS[t].g].push(t));
   renderAll();
+  renderEloBox();
+  scheduleSimHistory(); // pre-compute odds + group adv history in background
   const initTab=(location.search||'').replace('?','');
   if(initTab&&document.querySelector('.tab[data-v="'+initTab+'"]'))switchTab(initTab,false);
 });
