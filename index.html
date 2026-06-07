@@ -983,27 +983,38 @@ function renderGroups(){
       </tr></thead>${rows}</table>`;
     card.innerHTML=tableHTML;
     card.style.cursor='pointer';
-    let _cleanupTrans=null,_tableH=0;
-    card.addEventListener('mouseenter',()=>{
+    let _cleanupTrans=null,_tableH=0,_isOpen=false;
+    function openCard(){
       if(_cleanupTrans){card.removeEventListener('transitionend',_cleanupTrans);_cleanupTrans=null;}
-      _hoveredGroupCard=card; _hoveredGroupLetter=L;
-      if(!card.style.height)_tableH=card.offsetHeight; // only measure when at natural height
+      _hoveredGroupCard=card; _hoveredGroupLetter=L; _closeExpandedCard=closeCard; _isOpen=true;
+      if(!card.style.height)_tableH=card.offsetHeight;
       card.innerHTML=`<h3 style="margin-bottom:8px">Group ${L} <span style="font-family:var(--mono);font-size:10px;font-weight:400;color:var(--mut2);letter-spacing:.08em">R32 ODDS</span></h3>`+paintGroupAdvChart(L,getAdvHistory());
       const endH=card.scrollHeight;
       card.style.height=_tableH+'px';
       card.offsetHeight; // force reflow so transition fires
       card.style.height=endH+'px';
-    });
-    card.addEventListener('mouseleave',()=>{
-      _hoveredGroupCard=null; _hoveredGroupLetter=null;
+    }
+    function closeCard(){
+      if(!_isOpen)return;
+      _hoveredGroupCard=null; _hoveredGroupLetter=null; _closeExpandedCard=null; _isOpen=false;
       const startH=card.offsetHeight;
       card.innerHTML=tableHTML;
       card.style.height=startH+'px';
       card.offsetHeight; // force reflow
-      card.style.height=_tableH+'px'; // animate back to stored table height
+      card.style.height=_tableH+'px';
       _cleanupTrans=()=>{card.style.height='';_cleanupTrans=null;};
       card.addEventListener('transitionend',_cleanupTrans,{once:true});
-    });
+    }
+    const canHover=window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    if(canHover){
+      card.addEventListener('mouseenter',openCard);
+      card.addEventListener('mouseleave',closeCard);
+    }else{
+      card.addEventListener('click',()=>{
+        if(_isOpen){closeCard();}
+        else{if(_closeExpandedCard)_closeExpandedCard();openCard();}
+      });
+    }
     host.appendChild(card);
   });
 }
@@ -1131,7 +1142,7 @@ function renderBracket(){
 
 /* ----- odds history ----- */
 let _oddsHistory=null,_oddsHistoryKey='',_oddsJobId=0;
-let _hoveredGroupCard=null,_hoveredGroupLetter=null;
+let _hoveredGroupCard=null,_hoveredGroupLetter=null,_closeExpandedCard=null;
 
 // Build ordered list of simulation checkpoints from the current results state.
 // Returns [{key, state}] in chronological order (Pre → group days → KO days).
