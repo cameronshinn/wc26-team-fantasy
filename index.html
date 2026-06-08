@@ -84,6 +84,7 @@
 
   /* groups */
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;align-items:start}
+  #groups-coach{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;color:var(--mut2);letter-spacing:.07em;margin-bottom:12px;pointer-events:none}
   .gcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 15px;overflow:hidden;transition:height .2s ease}
   .gcard h3{margin:0 0 11px;font-family:"Anton",sans-serif;font-weight:400;font-size:24px;letter-spacing:.04em;
     text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
@@ -193,7 +194,7 @@
     border-radius:10px;padding:10px 12px;margin-bottom:8px}
   .korow .x{margin-left:auto;color:var(--Grant);cursor:pointer;font-family:var(--mono);font-size:12px;border:1px solid #3a2630;
     border-radius:8px;padding:6px 10px;background:transparent}
-  .grp2{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;align-items:start}
+  .grp2{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;align-items:stretch}
   .io{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
   label.file{display:inline-block}
   label.file input{display:none}
@@ -632,6 +633,12 @@ function paintGroupAdvChart(letter,advHistory){
   const pw=W-pL-pR,ph=H-pT-pB;
   const xs=i=>pL+i/(GRP_AXIS.length-1)*pw;
   const yr=v=>pT+ph-(v*ph);
+  // Assign dash patterns to teams sharing an owner so they're visually distinct
+  const DASH_PATTERNS=['','4,3','1.5,2.5','6,3,2,3'];
+  const ownerBuckets={};
+  teams.forEach(t=>{const o=TEAMS[t]?.o||'\0'+t;(ownerBuckets[o]||(ownerBuckets[o]=[])).push(t);});
+  const teamDash={};
+  Object.values(ownerBuckets).forEach(ts=>ts.forEach((t,i)=>{teamDash[t]=ts.length>1?DASH_PATTERNS[i%DASH_PATTERNS.length]:''}));
   // Axis sections (label positions)
   const secKeys=['Jun 17','Jun 23','Jun 27'];
   const secCx={};
@@ -639,7 +646,7 @@ function paintGroupAdvChart(letter,advHistory){
   GRP_AXIS.forEach((e,i)=>{if(secKeys.includes(e.key)){secCx[e.key]=(xs(prev)+xs(i))/2;prev=i;}});
   let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block">`;
   // Grid lines at 25/50/75/100%
-  [0.25,0.5,0.75,1].forEach(v=>{
+  [0,0.25,0.5,0.75,1].forEach(v=>{
     const y=yr(v).toFixed(1);
     svg+=`<line x1="${pL}" y1="${y}" x2="${W-pR}" y2="${y}" stroke="#1d232b" stroke-width="1"/>`;
     svg+=`<text x="${pL-3}" y="${(+y+3.5).toFixed(1)}" fill="#5c6775" font-size="8" text-anchor="end">${Math.round(v*100)}%</text>`;
@@ -659,23 +666,29 @@ function paintGroupAdvChart(letter,advHistory){
   // One line per team
   teams.forEach(t=>{
     const col=ownerColor(t);
+    const dash=teamDash[t];
     const dpts=GRP_AXIS.map((e,i)=>{
       const snap=advHistory[e.key];
       return (snap&&snap[t]!=null)?{i,v:snap[t]}:null;
     }).filter(Boolean);
     if(dpts.length<2)return;
     const pts2=dpts.map(d=>({x:+xs(d.i).toFixed(1),y:+yr(d.v).toFixed(1)}));
-    svg+=`<path d="${monotonePath(pts2)}" fill="none" stroke="${col}" stroke-width="1.2" stroke-linecap="round" opacity="0.85"/>`;
+    svg+=`<path d="${monotonePath(pts2)}" fill="none" stroke="${col}" stroke-width="1.2" stroke-linecap="round" opacity="0.85"${dash?` stroke-dasharray="${dash}"`:''}/>`;
   });
   svg+='</svg>';
-  // Team legend below chart
-  const legend=teams.map(t=>{
+  // Team legend below chart — swatch mirrors the line's dash pattern
+  const last=Object.keys(advHistory).sort((a,b)=>_grpDk(a)-_grpDk(b)).at(-1);
+  const gs=groupStandings(letter);
+  const legendTeams=gs.complete
+    ?gs.ranked.map(r=>r.team)
+    :[...teams].sort((a,b)=>(advHistory[last]?.[b]??0)-(advHistory[last]?.[a]??0));
+  const legend=legendTeams.map(t=>{
     const col=ownerColor(t);
-    const last=Object.keys(advHistory).sort((a,b)=>_grpDk(a)-_grpDk(b)).at(-1);
+    const dash=teamDash[t];
     const pct=advHistory[last]?Math.round((advHistory[last][t]??0)*100):null;
+    const swatch=`<svg width="14" height="4" style="flex-shrink:0;overflow:visible"><line x1="0" y1="2" x2="14" y2="2" stroke="${col}" stroke-width="2" stroke-linecap="round"${dash?` stroke-dasharray="${dash}"`:''}></line></svg>`;
     return `<span style="display:flex;align-items:center;gap:4px;color:${col};font-size:11px;font-family:var(--mono);white-space:nowrap">`+
-      `<span style="width:12px;height:2px;background:${col};border-radius:2px;display:inline-block;flex-shrink:0"></span>`+
-      `${t}${pct!=null?' '+pct+'%':''}</span>`;
+      `${swatch}${t}${pct!=null?' '+pct+'%':''}</span>`;
   }).join('');
   return `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px">${legend}</div>${svg}`;
 }
@@ -958,6 +971,12 @@ function renderGroups(){
   const A=advancers();
   const advOdds=getTeamAdvOdds();
   const host=document.getElementById("groups"); host.innerHTML="";
+  if(!document.getElementById('groups-coach')){
+    const canHover=window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    const tip=document.createElement('div'); tip.id='groups-coach';
+    tip.innerHTML=`<svg width="13" height="9" viewBox="0 0 13 9" fill="none"><polyline points="1,8 5,3 8,5.5 12,1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>${canHover?'hover':'tap'} a card to see odds history`;
+    host.before(tip);
+  }
   GROUP_LETTERS.forEach(L=>{
     const s=groupStandings(L);
     const card=document.createElement("div"); card.className="gcard";
@@ -1141,7 +1160,7 @@ function renderBracket(){
 }
 
 /* ----- odds history ----- */
-let _oddsHistory=null,_oddsHistoryKey='',_oddsJobId=0;
+let _oddsHistory=null,_oddsHistoryKey='',_oddsJobId=0,_oddsJobKey='';
 let _hoveredGroupCard=null,_hoveredGroupLetter=null,_closeExpandedCard=null;
 
 // Build ordered list of simulation checkpoints from the current results state.
@@ -1206,7 +1225,8 @@ function buildSimCheckpoints(savedR){
 function scheduleSimHistory(){
   const cacheKey=stateKey(R);
   if(cacheKey===_oddsHistoryKey&&_oddsHistory)return;
-  _oddsHistory=null; _oddsHistoryKey='';
+  if(cacheKey===_oddsJobKey)return;
+  _oddsHistory=null; _oddsHistoryKey=''; _oddsJobKey=cacheKey;
   const savedR=R;
   const jobId=++_oddsJobId;
   const {cps,pairDate:_spd}=buildSimCheckpoints(savedR);
@@ -1253,7 +1273,7 @@ function scheduleSimHistory(){
           if(ei>=0)pts[ei]=liveEntry;else{pts.push(liveEntry);pts.sort((a,b)=>(_axisIdx[a.key]??999)-(_axisIdx[b.key]??999));}
         }
       }
-      _oddsHistory=pts; _oddsHistoryKey=cacheKey;
+      _oddsHistory=pts; _oddsHistoryKey=cacheKey; _oddsJobKey='';
       const host=document.getElementById('oddsroot');
       if(host)paintOddsChart(host,pts);
       repaintHoveredGroup(pts);
