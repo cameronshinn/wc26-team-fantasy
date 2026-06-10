@@ -109,17 +109,20 @@ for (const [round, games] of Object.entries(roundIdx)) {
   games.forEach((g, i) => {
     const date = dates[i];
     if (!date) return;
-    const s = g.winner === g.a ? 1 : 0;
+    const w = g.hg > g.ag ? g.a : g.ag > g.hg ? g.b : (g.penHg > g.penAg ? g.a : g.b);
+    const s = w === g.a ? 1 : 0;
     allGames.push({ date, home: g.a, away: g.b, score: s });
   });
 }
 
 // 3rd place
-if (results.thirdPlaceGame && results.thirdPlace) {
+if (results.thirdPlaceGame) {
   const tpg = results.thirdPlaceGame;
-  const winner = results.thirdPlace;
-  const s = tpg.a === winner ? 1 : 0;
-  allGames.push({ date: 'Jul 18', home: tpg.a, away: tpg.b, score: s });
+  if (tpg.hg != null && tpg.ag != null) {
+    const w = tpg.hg > tpg.ag ? tpg.a : tpg.ag > tpg.hg ? tpg.b : (tpg.penHg > tpg.penAg ? tpg.a : tpg.b);
+    const s = tpg.a === w ? 1 : 0;
+    allGames.push({ date: 'Jul 18', home: tpg.a, away: tpg.b, score: s });
+  }
 }
 
 // Sort by date

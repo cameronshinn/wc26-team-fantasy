@@ -4,15 +4,15 @@
    Last updated: 2026-06-03T19:32:08.001Z
    Commissioner Mode → Export is still available to override.
    =============================================================
-   groupGames : keyed by "GROUP|HOME|AWAY" -> { hg, ag }
-   koGames    : list of { round, a, b, winner }   (round: R32/R16/QF/SF/F)
-   goldenBoot : team name that houses the Golden Boot winner (or null)
-   thirdPlace : team that wins the 3rd-place playoff (or null)
+   groupGames     : keyed by "GROUP|HOME|AWAY" -> { hg, ag }
+   koGames        : list of { round, a, b, hg, ag [, penHg, penAg] }  (round: R32/R16/QF/SF/F)
+   goldenBoot     : team name that houses the Golden Boot winner (or null)
+   thirdPlaceGame : { a, b, hg, ag [, penHg, penAg] } score for the 3rd-place match (or null)
 ============================================================= */
 window.WC_RESULTS = {
   "groupGames": {},
   "koGames": [],
   "goldenBoot": null,
-  "thirdPlace": null,
+  "thirdPlaceGame": null,
   "lastUpdated": null
 };

@@ -143,7 +143,6 @@ async function main() {
 
   const groupGames = {};
   const koGames = [];
-  let thirdPlace = null;
   let thirdPlaceGame = null;
   let finishedCount = 0;
 
@@ -168,25 +167,20 @@ async function main() {
         : {hg: ag, ag: hg};
 
     } else if (match.stage === 'THIRD_PLACE') {
-      const winner = match.score.winner === 'HOME_TEAM' ? home
-                   : match.score.winner === 'AWAY_TEAM' ? away
-                   : null;
-      if (winner) thirdPlace = winner;
       const et3 = match.score.extraTime;
       const hg3 = (et3 && et3.home != null) ? et3.home : hg;
       const ag3 = (et3 && et3.away != null) ? et3.away : ag;
       thirdPlaceGame = {a: home, b: away, hg: hg3, ag: ag3};
+      const pen3 = match.score.penalties;
+      if (pen3 && pen3.home != null && pen3.away != null) { thirdPlaceGame.penHg = pen3.home; thirdPlaceGame.penAg = pen3.away; }
 
     } else if (ROUND_MAP[match.stage]) {
-      const winner = match.score.winner === 'HOME_TEAM' ? home
-                   : match.score.winner === 'AWAY_TEAM' ? away
-                   : null;
       // Use extra-time score if available (score after 120 min), else full-time
       const et = match.score.extraTime;
       const scoreHg = (et && et.home != null) ? et.home : hg;
       const scoreAg = (et && et.away != null) ? et.away : ag;
       const pen = match.score.penalties;
-      const entry = {round: ROUND_MAP[match.stage], a: home, b: away, winner, hg: scoreHg, ag: scoreAg};
+      const entry = {round: ROUND_MAP[match.stage], a: home, b: away, hg: scoreHg, ag: scoreAg};
       if (pen && pen.home != null && pen.away != null) { entry.penHg = pen.home; entry.penAg = pen.away; }
       koGames.push(entry);
     }
@@ -204,13 +198,12 @@ async function main() {
    Commissioner Mode → Export is still available to override.
    =============================================================
    groupGames     : keyed by "GROUP|HOME|AWAY" -> { hg, ag }
-   koGames        : list of { round, a, b, winner, hg, ag }  (round: R32/R16/QF/SF/F; hg/ag = FT or AET goals)
+   koGames        : list of { round, a, b, hg, ag [, penHg, penAg] }  (round: R32/R16/QF/SF/F; hg/ag = FT or AET goals)
    goldenBoot     : team name that houses the Golden Boot winner (or null)
-   thirdPlace     : team that wins the 3rd-place playoff (or null)
-   thirdPlaceGame : { a, b, hg, ag } score for the 3rd-place match (or null)
+   thirdPlaceGame : { a, b, hg, ag [, penHg, penAg] } score for the 3rd-place match (or null)
    lastUpdated    : ISO timestamp of the last auto-update (or null)
 ============================================================= */
-window.WC_RESULTS = ${JSON.stringify({groupGames, koGames, goldenBoot: existingGoldenBoot, thirdPlace, thirdPlaceGame, lastUpdated}, null, 2)};
+window.WC_RESULTS = ${JSON.stringify({groupGames, koGames, goldenBoot: existingGoldenBoot, thirdPlaceGame, lastUpdated}, null, 2)};
 `;
 
   const outPath = path.join(__dirname, '..', 'results.js');
