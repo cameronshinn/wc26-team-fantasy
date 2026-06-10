@@ -1457,9 +1457,11 @@ function renderEloBox(){
       const svg=makeEloSparkline(team);
       if(!svg){tip.style.display='none';return;}
       const curr=ELO[team];
-      const firstDate=dates.find(d=>ELO_HISTORY[d][team]!=null);
-      const firstElo=firstDate?ELO_HISTORY[firstDate][team]:null;
-      const totalDelta=firstElo!=null?curr-firstElo:0;
+      const tournamentStart='2026-06-11';
+      const hasTournamentData=dates.some(d=>d>=tournamentStart&&ELO_HISTORY[d][team]!=null);
+      const preDate=dates.slice().reverse().find(d=>d<tournamentStart&&ELO_HISTORY[d][team]!=null);
+      const baseElo=hasTournamentData&&preDate!=null?ELO_HISTORY[preDate][team]:null;
+      const totalDelta=baseElo!=null?curr-baseElo:0;
       const deltaStr=totalDelta>0?`<span style="color:var(--acc)">+${totalDelta}</span>`:totalDelta<0?`<span style="color:#ff5b5b">${totalDelta}</span>`:'';
       tip.innerHTML=
         `<div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--ink);margin-bottom:8px;display:flex;justify-content:space-between;align-items:baseline;gap:16px">
