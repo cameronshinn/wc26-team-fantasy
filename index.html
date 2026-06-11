@@ -150,7 +150,7 @@
   .bkt-hdr{display:flex;gap:2px;margin-bottom:6px}
   .bkt-hlabel{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
     color:var(--acc);text-align:center;flex:1;min-width:110px}
-  .bkt{display:flex;gap:2px;min-height:1040px}
+  .bkt{display:flex;gap:2px;min-height:1040px;min-width:100%}
   .bkt-round{display:flex;flex-direction:column;justify-content:space-around;flex:1;min-width:110px}
   .bkt-match{background:var(--panel);border:1px solid var(--line);border-radius:8px;margin:2px 3px;overflow:hidden;flex-shrink:0}
   .bkt-team{padding:6px 7px;font-size:11px;display:flex;align-items:center;gap:5px;overflow:hidden}
@@ -280,8 +280,7 @@
   </section>
 
   <section class="view" id="v-knockout">
-    <div class="bkt-hdr" id="bkthdr"></div>
-    <div class="bkt-outer"><div class="bkt" id="bktroot"></div></div>
+    <div class="bkt-outer"><div class="bkt-hdr" id="bkthdr"></div><div class="bkt" id="bktroot"></div></div>
     <div class="bkt-sep"></div>
     <div class="korounds" id="korounds"></div>
   </section>
