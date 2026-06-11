@@ -1382,13 +1382,30 @@ function makeEloSparkline(team){
     const key=(mon==='06'?'Jun':'Jul')+' '+parseInt(day);
     return CHART_AXIS.findIndex(e=>e.key===key);
   }
+  // Build set of CHART_AXIS indices where this team has a completed WC group game
+  const wcMatchAxes=new Set();
+  Object.keys(R.groupGames).forEach(key=>{
+    const parts=key.split('|');
+    if(parts[1]!==team&&parts[2]!==team)return;
+    const r=R.groupGames[key];
+    if(!r||r.hg==null||r.ag==null||r.hg===''||r.ag===''||isNaN(+r.hg)||isNaN(+r.ag))return;
+    const dateStr=MATCH_DATES[key];
+    if(!dateStr)return;
+    const ai=CHART_AXIS.findIndex(e=>e.key===dateStr);
+    if(ai>=0)wcMatchAxes.add(ai);
+  });
   const rawPts=[];let preElo=null;
   dates.forEach(d=>{
     const idx=dateToAxisIdx(d);
     const elo=ELO_HISTORY[d][team];
     if(elo==null)return;
     if(idx<0){preElo=elo;}
-    else rawPts.push({i:idx,v:elo});
+    else{
+      // Only plot as chart point if team has a completed WC game on or before this axis position
+      const hasWCByNow=[...wcMatchAxes].some(mi=>mi<=idx);
+      if(hasWCByNow)rawPts.push({i:idx,v:elo});
+      else preElo=elo;
+    }
   });
   if(preElo!=null)rawPts.unshift({i:0,v:preElo});
   if(!rawPts.length)return '';
@@ -1422,11 +1439,19 @@ function renderEloBox(){
   if(!box||!grid||!Object.keys(ELO).length)return;
   const dates=Object.keys(ELO_HISTORY).sort();
   const prevElo=dates.length>=2?ELO_HISTORY[dates[dates.length-2]]:{};
+  // Only show row delta for teams that have played a completed WC group game
+  const teamsWithWCGames=new Set();
+  Object.keys(R.groupGames).forEach(key=>{
+    const r=R.groupGames[key];
+    if(!r||r.hg==null||r.ag==null||r.hg===''||r.ag===''||isNaN(+r.hg)||isNaN(+r.ag))return;
+    const parts=key.split('|');
+    teamsWithWCGames.add(parts[1]);teamsWithWCGames.add(parts[2]);
+  });
   const sorted=Object.entries(ELO).sort((a,b)=>b[1]-a[1]);
   grid.innerHTML=sorted.map(([team,rating])=>{
     const isHome=HOME_TEAMS.has(team);
     const prev=prevElo[team];
-    const delta=prev!=null?rating-prev:0;
+    const delta=teamsWithWCGames.has(team)&&prev!=null?rating-prev:0;
     const deltaHtml=delta>0
       ?`<span style="color:var(--acc);font-size:10px;margin-left:5px">+${delta}</span>`
       :delta<0
@@ -1456,10 +1481,7 @@ function renderEloBox(){
       const svg=makeEloSparkline(team);
       if(!svg){tip.style.display='none';return;}
       const curr=ELO[team];
-      const tournamentStart='2026-06-11';
-      const hasTournamentData=dates.some(d=>d>=tournamentStart&&ELO_HISTORY[d][team]!=null);
-      const preDate=dates.slice().reverse().find(d=>d<tournamentStart&&ELO_HISTORY[d][team]!=null);
-      const baseElo=hasTournamentData&&preDate!=null?ELO_HISTORY[preDate][team]:null;
+      const baseElo=baseDate!=null?ELO_HISTORY[baseDate][team]:null;
       const totalDelta=baseElo!=null?curr-baseElo:0;
       const deltaStr=totalDelta>0?`<span style="color:var(--acc)">+${totalDelta}</span>`:totalDelta<0?`<span style="color:#ff5b5b">${totalDelta}</span>`:'';
       tip.innerHTML=
