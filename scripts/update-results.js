@@ -1,22 +1,22 @@
 #!/usr/bin/env node
 /**
- * Fetches WC26 results from api-football (api-sports.io) and regenerates results.js.
+ * Fetches WC26 results from football-data.org and regenerates results.js.
  *
  * Setup:
- *   1. Get an API key at https://dashboard.api-football.com/register
- *   2. Add it as repository secret API_FOOTBALL_KEY
+ *   1. Get a free API key at https://www.football-data.org/client/register
+ *   2. Add it as repository secret FOOTBALL_API_KEY
  *
  * Run locally:
- *   API_FOOTBALL_KEY=<key> node scripts/update-results.js
+ *   FOOTBALL_API_KEY=<key> node scripts/update-results.js
  */
 
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
-const API_KEY = process.env.API_FOOTBALL_KEY;
+const API_KEY = process.env.FOOTBALL_API_KEY;
 if (!API_KEY) {
-  console.error('Error: API_FOOTBALL_KEY environment variable not set');
+  console.error('Error: FOOTBALL_API_KEY environment variable not set');
   process.exit(1);
 }
 
@@ -67,13 +67,9 @@ const TEAM_NAME_MAP = {
   'Congo DR':                   'DR Congo',
   'Congo, DR':                  'DR Congo',
   'Democratic Republic of Congo': 'DR Congo',
-  'DR Congo':                   'DR Congo',
   'Bosnia and Herzegovina':     'Bosnia',
-  'Bosnia & Herzegovina':       'Bosnia',
   'Czech Republic':             'Czechia',
   'Curaçao':                   'Curacao',
-  'Republic of Ireland':        'Ireland',
-  'Korea DPR':                  'North Korea',
 };
 const KNOWN_TEAMS = new Set(TEAMS_DEF.map(([t]) => t));
 
@@ -85,24 +81,21 @@ function normTeam(name) {
   return mapped;
 }
 
-// api-football league.round strings → our stage codes
-function getRound(roundStr) {
-  if (!roundStr) return null;
-  const r = roundStr.toLowerCase();
-  if (r.includes('group'))                   return 'GROUP_STAGE';
-  if (r.includes('round of 32'))             return 'R32';
-  if (r.includes('round of 16'))             return 'R16';
-  if (r.includes('quarter'))                 return 'QF';
-  if (r.includes('semi'))                    return 'SF';
-  if (r.includes('3rd') || r.includes('third')) return 'THIRD_PLACE';
-  if (r.includes('final'))                   return 'F';
-  return null;
-}
+// football-data.org stage strings → our round codes
+const ROUND_MAP = {
+  'ROUND_OF_32': 'R32',
+  'LAST_32':     'R32',
+  'ROUND_OF_16': 'R16',
+  'LAST_16':     'R16',
+  'QUARTER_FINALS': 'QF',
+  'SEMI_FINALS':    'SF',
+  'FINAL':          'F',
+};
 const ROUND_ORDER = {R32:0, R16:1, QF:2, SF:3, F:4};
 
 function fetchJson(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, {headers: {'x-apisports-key': API_KEY}}, res => {
+    https.get(url, {headers: {'X-Auth-Token': API_KEY}}, res => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
@@ -130,16 +123,16 @@ function readExistingGoldenBoot() {
 }
 
 async function main() {
-  console.log('Fetching WC26 matches from api-football...');
+  console.log('Fetching WC26 matches from football-data.org...');
   let data;
   try {
-    data = await fetchJson('https://v3.football.api-sports.io/fixtures?league=1&season=2026');
+    data = await fetchJson('https://api.football-data.org/v4/competitions/WC/matches');
   } catch (err) {
     console.error('API fetch failed:', err.message);
     process.exit(1);
   }
 
-  const matches = data.response;
+  const matches = data.matches;
   if (!matches || matches.length === 0) {
     console.log('No matches returned from API — results.js not modified');
     process.exit(0);
@@ -153,41 +146,45 @@ async function main() {
   let thirdPlaceGame = null;
   let finishedCount = 0;
 
-  for (const item of matches) {
-    const statusShort = item.fixture.status.short;
-    if (!['FT', 'AET', 'PEN'].includes(statusShort)) continue;
+  for (const match of matches) {
+    if (match.status !== 'FINISHED') continue;
     finishedCount++;
 
-    const home = normTeam(item.teams.home.name);
-    const away = normTeam(item.teams.away.name);
-    // goals.home/away = total goals at end of play (includes AET, excludes penalty shootout)
-    const hg = item.goals.home;
-    const ag = item.goals.away;
+    const home = normTeam(match.homeTeam.name);
+    const away = normTeam(match.awayTeam.name);
+    const hg = match.score.fullTime.home;
+    const ag = match.score.fullTime.away;
     if (hg == null || ag == null) {
-      console.warn(`  Skipping ${home} vs ${away} (${item.league.round}, status=${statusShort}): goals=${JSON.stringify(item.goals)}`);
+      console.warn(`  Skipping ${home} vs ${away} (${match.stage}, status=${match.status}): score=${JSON.stringify(match.score)}`);
       continue;
     }
 
-    const stage = getRound(item.league.round);
-
-    if (stage === 'GROUP_STAGE') {
+    if (match.stage === 'GROUP_STAGE') {
       const lookup = FIXTURE_LOOKUP[`${home}|${away}`];
       if (!lookup) {
         console.warn(`  No canonical fixture found for: ${home} vs ${away}`);
         continue;
       }
+      // Map API home/away goals to canonical home/away order
       groupGames[lookup.key] = lookup.homeIsFirst
         ? {hg, ag}
         : {hg: ag, ag: hg};
 
-    } else if (stage === 'THIRD_PLACE') {
-      thirdPlaceGame = {a: home, b: away, hg, ag};
-      const pen = item.score.penalty;
-      if (pen && pen.home != null && pen.away != null) { thirdPlaceGame.penHg = pen.home; thirdPlaceGame.penAg = pen.away; }
+    } else if (match.stage === 'THIRD_PLACE') {
+      const et3 = match.score.extraTime;
+      const hg3 = (et3 && et3.home != null) ? et3.home : hg;
+      const ag3 = (et3 && et3.away != null) ? et3.away : ag;
+      thirdPlaceGame = {a: home, b: away, hg: hg3, ag: ag3};
+      const pen3 = match.score.penalties;
+      if (pen3 && pen3.home != null && pen3.away != null) { thirdPlaceGame.penHg = pen3.home; thirdPlaceGame.penAg = pen3.away; }
 
-    } else if (stage) {
-      const entry = {round: stage, a: home, b: away, hg, ag};
-      const pen = item.score.penalty;
+    } else if (ROUND_MAP[match.stage]) {
+      // Use extra-time score if available (score after 120 min), else full-time
+      const et = match.score.extraTime;
+      const scoreHg = (et && et.home != null) ? et.home : hg;
+      const scoreAg = (et && et.away != null) ? et.away : ag;
+      const pen = match.score.penalties;
+      const entry = {round: ROUND_MAP[match.stage], a: home, b: away, hg: scoreHg, ag: scoreAg};
       if (pen && pen.home != null && pen.away != null) { entry.penHg = pen.home; entry.penAg = pen.away; }
       koGames.push(entry);
     }
