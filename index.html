@@ -1291,7 +1291,8 @@ function scheduleSimHistory(){
         if(latestIdx>=0){
           const lk=CHART_AXIS[latestIdx].key;
           const ei=pts.findIndex(p=>p.key===lk);
-          const liveEntry={key:lk,odds:liveOdds,teamAdv:pts[ei]?.teamAdv??{},live:true};
+          const liveTeamAdv=pts[ei]?.teamAdv??computeTeamAdvOdds(N,stateKey(savedR)+'live');
+          const liveEntry={key:lk,odds:liveOdds,teamAdv:liveTeamAdv,live:true};
           if(ei>=0)pts[ei]=liveEntry;else{pts.push(liveEntry);pts.sort((a,b)=>(_axisIdx[a.key]??999)-(_axisIdx[b.key]??999));}
         }
       }
