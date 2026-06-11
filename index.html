@@ -1482,7 +1482,7 @@ function renderEloBox(){
       const svg=makeEloSparkline(team);
       if(!svg){tip.style.display='none';return;}
       const curr=ELO[team];
-      const baseElo=baseDate!=null?ELO_HISTORY[baseDate][team]:null;
+      const baseElo=teamsWithWCGames.has(team)?prevElo[team]??null:null;
       const totalDelta=baseElo!=null?curr-baseElo:0;
       const deltaStr=totalDelta>0?`<span style="color:var(--acc)">+${totalDelta}</span>`:totalDelta<0?`<span style="color:#ff5b5b">${totalDelta}</span>`:'';
       tip.innerHTML=
