@@ -154,6 +154,7 @@ async function main() {
     const away = normTeam(match.awayTeam.name);
     const hg = match.score.fullTime.home;
     const ag = match.score.fullTime.away;
+    if (hg == null || ag == null) continue;
 
     if (match.stage === 'GROUP_STAGE') {
       const lookup = FIXTURE_LOOKUP[`${home}|${away}`];

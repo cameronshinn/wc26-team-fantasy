@@ -10,12 +10,7 @@
    lastUpdated    : ISO timestamp of the last auto-update (or null)
 ============================================================= */
 window.WC_RESULTS = {
-  "groupGames": {
-    "A|Mexico|South Africa": {
-      "hg": null,
-      "ag": null
-    }
-  },
+  "groupGames": {},
   "koGames": [],
   "goldenBoot": null,
   "thirdPlaceGame": null,
