@@ -53,16 +53,19 @@ jobs:
           FOOTBALL_API_KEY: ${{ secrets.FOOTBALL_API_KEY }}
         run: node scripts/update-results.js
 
+      - name: Fetch Elo ratings
+        run: node scripts/update-elo.js
+
       - name: Check for changes
         id: diff
         run: |
-          git diff --quiet results.js || echo "changed=true" >> "$GITHUB_OUTPUT"
+          git diff --quiet results.js elo-history.json || echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - name: Commit and push
         if: steps.diff.outputs.changed == 'true'
         run: |
           git config user.name  "wc26-results-bot"
           git config user.email "noreply@github.com"
-          git add results.js last-update.json
+          git add results.js last-update.json elo-history.json
           git commit -m "chore: auto-update results.js [skip ci]"
           git push
