@@ -3,9 +3,9 @@ name: Update WC26 Results
 # Runs every 30 minutes to pull live match results and push results.js.
 #
 # One-time setup:
-#   1. Get a free API key at https://www.football-data.org/client/register
+#   1. Get an API key at https://dashboard.api-football.com/register
 #   2. In your GitHub repo: Settings → Secrets → Actions → New repository secret
-#      Name:  FOOTBALL_API_KEY
+#      Name:  API_FOOTBALL_KEY
 #      Value: <your key>
 
 on:
@@ -50,7 +50,7 @@ jobs:
 
       - name: Fetch results
         env:
-          FOOTBALL_API_KEY: ${{ secrets.FOOTBALL_API_KEY }}
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
         run: node scripts/update-results.js
 
       - name: Check for changes
