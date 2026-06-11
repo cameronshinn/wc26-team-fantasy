@@ -1667,7 +1667,7 @@ function renderCommGroups(){
       R.groupGames[k]=R.groupGames[k]||{hg:"",ag:""};
       R.groupGames[k][s]=v;
       if(R.groupGames[k].hg===""&&R.groupGames[k].ag==="") delete R.groupGames[k];
-      markDirty(); liveTally();
+      markDirty(); liveTally(); scheduleSimHistory(); renderGroups();
     });
   });
 }
