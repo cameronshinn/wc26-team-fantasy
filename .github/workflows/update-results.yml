@@ -1,6 +1,7 @@
 name: Update WC26 Results
 
-# Runs every 30 minutes to pull live match results and push results.js.
+# Triggered externally via workflow_dispatch (called by cron job every 5 min).
+# Manual runs from the Actions tab also work.
 #
 # One-time setup:
 #   1. Get a free API key at https://www.football-data.org/client/register
@@ -9,9 +10,7 @@ name: Update WC26 Results
 #      Value: <your key>
 
 on:
-  schedule:
-    - cron: '*/5 * * * *'
-  workflow_dispatch:          # also allows manual trigger from the Actions tab
+  workflow_dispatch:          # triggered by external cron job or manual run
 
 permissions:
   contents: write             # needed to commit results.js back to the repo
@@ -54,7 +53,14 @@ jobs:
         run: node scripts/update-results.js
 
       - name: Fetch Elo ratings
-        run: node scripts/update-elo.js
+        continue-on-error: true
+        run: |
+          today=$(TZ=America/Los_Angeles date +%Y-%m-%d)
+          if node -e "const h=require('./elo-history.json');process.exit(h['$today']?0:1)" 2>/dev/null; then
+            echo "Elo snapshot for $today already exists — skipping"
+          else
+            node scripts/update-elo.js
+          fi
 
       - name: Check for changes
         id: diff

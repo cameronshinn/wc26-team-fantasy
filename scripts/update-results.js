@@ -147,7 +147,7 @@ async function main() {
   let finishedCount = 0;
 
   for (const match of matches) {
-    if (match.status !== 'FINISHED') continue;
+    if (match.status !== 'FINISHED' && match.status !== 'AWARDED') continue;
     finishedCount++;
 
     const home = normTeam(match.homeTeam.name);
@@ -187,6 +187,8 @@ async function main() {
       const entry = {round: ROUND_MAP[match.stage], a: home, b: away, hg: scoreHg, ag: scoreAg};
       if (pen && pen.home != null && pen.away != null) { entry.penHg = pen.home; entry.penAg = pen.away; }
       koGames.push(entry);
+    } else {
+      console.warn(`  Unrecognised stage "${match.stage}" for ${home} vs ${away} — skipping`);
     }
   }
 

@@ -103,7 +103,7 @@ async function main() {
   const historyPath = path.join(__dirname, "..", "elo-history.json");
   let history = {};
   try { history = JSON.parse(fs.readFileSync(historyPath, "utf8")); } catch (_) {}
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString('en-CA', {timeZone: 'America/Los_Angeles'});
   history[today] = sorted;
   fs.writeFileSync(historyPath, JSON.stringify(history, null, 2) + "\n");
   console.log(`Appended ${today} to elo-history.json (${Object.keys(history).length} total entries).`);
