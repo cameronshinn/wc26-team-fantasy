@@ -14,10 +14,14 @@ window.WC_RESULTS = {
     "A|Mexico|South Africa": {
       "hg": 2,
       "ag": 0
+    },
+    "A|Czechia|South Korea": {
+      "hg": 1,
+      "ag": 2
     }
   },
   "koGames": [],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-06-12T03:50:20.464Z"
+  "lastUpdated": "2026-06-12T04:00:24.990Z"
 };
