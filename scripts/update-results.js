@@ -64,6 +64,7 @@ const TEAM_NAME_MAP = {
   "Côte d'Ivoire":             'Ivory Coast',
   "Cote d'Ivoire":             'Ivory Coast',
   'Cabo Verde':                 'Cape Verde',
+  'Cape Verde Islands':         'Cape Verde',
   'Congo DR':                   'DR Congo',
   'Congo, DR':                  'DR Congo',
   'Democratic Republic of Congo': 'DR Congo',
