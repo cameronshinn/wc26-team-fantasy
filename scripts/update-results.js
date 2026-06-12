@@ -68,6 +68,7 @@ const TEAM_NAME_MAP = {
   'Congo, DR':                  'DR Congo',
   'Democratic Republic of Congo': 'DR Congo',
   'Bosnia and Herzegovina':     'Bosnia',
+  'Bosnia-Herzegovina':         'Bosnia',
   'Czech Republic':             'Czechia',
   'Curaçao':                   'Curacao',
 };
