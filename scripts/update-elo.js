@@ -105,8 +105,9 @@ async function main() {
   try { history = JSON.parse(fs.readFileSync(historyPath, "utf8")); } catch (_) {}
   const today = new Date().toLocaleDateString('en-CA', {timeZone: 'America/Los_Angeles'});
   history[today] = sorted;
+  history._lastFetched = new Date().toISOString();
   fs.writeFileSync(historyPath, JSON.stringify(history, null, 2) + "\n");
-  console.log(`Appended ${today} to elo-history.json (${Object.keys(history).length} total entries).`);
+  console.log(`Appended ${today} to elo-history.json (${Object.keys(history).filter(k => !k.startsWith('_')).length} total entries).`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

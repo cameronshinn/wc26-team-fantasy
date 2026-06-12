@@ -55,9 +55,13 @@ jobs:
       - name: Fetch Elo ratings
         continue-on-error: true
         run: |
-          today=$(TZ=America/Los_Angeles date +%Y-%m-%d)
-          if node -e "const h=require('./elo-history.json');process.exit(h['$today']?0:1)" 2>/dev/null; then
-            echo "Elo snapshot for $today already exists — skipping"
+          if node -e "
+            const h=require('./elo-history.json');
+            const last=h._lastFetched;
+            const ageMin=last?(Date.now()-new Date(last))/60000:Infinity;
+            process.exit(ageMin < 60 ? 0 : 1);
+          " 2>/dev/null; then
+            echo "Elo fetched within last hour — skipping"
           else
             node scripts/update-elo.js
           fi
