@@ -1883,9 +1883,9 @@ Promise.all([
   fetch('draft.json').then(r=>r.json()).catch(()=>({players:{},teams:{}})),
   fetch('elo-history.json').then(r=>r.json()).catch(()=>({}))
 ]).then(([draftData,historyData])=>{
-  ELO_HISTORY=historyData;
-  const latestDate=Object.keys(historyData).sort().at(-1);
-  ELO=latestDate?historyData[latestDate]:{};
+  ELO_HISTORY=Object.fromEntries(Object.entries(historyData).filter(([k])=>/^\d{4}-\d{2}-\d{2}$/.test(k)));
+  const latestDate=Object.keys(ELO_HISTORY).sort().at(-1);
+  ELO=latestDate?ELO_HISTORY[latestDate]:{};
   if(draftData.players)PLAYERS=draftData.players;
   if(draftData.teams)TEAMS=draftData.teams;
   GROUP_LETTERS.forEach(L=>{GROUPS[L]=[];});
