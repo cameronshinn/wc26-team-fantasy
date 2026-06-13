@@ -349,7 +349,7 @@
     "Curacao": 1434,
     "Qatar": 1421
   },
-  "_lastFetched": "2026-06-13T22:20:23.832Z",
+  "_lastFetched": "2026-06-13T23:30:26.651Z",
   "2026-06-13": {
     "Spain": 2157,
     "Argentina": 2115,
@@ -367,8 +367,8 @@
     "Japan": 1906,
     "Belgium": 1894,
     "Uruguay": 1892,
-    "Switzerland": 1891,
     "Mexico": 1881,
+    "Switzerland": 1865,
     "Senegal": 1860,
     "Austria": 1830,
     "Morocco": 1827,
@@ -397,7 +397,7 @@
     "Haiti": 1548,
     "South Africa": 1511,
     "Ghana": 1510,
-    "Curacao": 1434,
-    "Qatar": 1421
+    "Qatar": 1447,
+    "Curacao": 1434
   }
 }
