@@ -58,10 +58,14 @@ window.WC_RESULTS = {
     "F|Tunisia|Sweden": {
       "hg": 1,
       "ag": 5
+    },
+    "H|Spain|Cape Verde": {
+      "hg": 0,
+      "ag": 0
     }
   },
   "koGames": [],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-06-15T17:55:56.864Z"
+  "lastUpdated": "2026-06-15T18:01:31.107Z"
 };
