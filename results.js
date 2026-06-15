@@ -54,10 +54,14 @@ window.WC_RESULTS = {
     "E|Ecuador|Ivory Coast": {
       "hg": 0,
       "ag": 1
+    },
+    "F|Tunisia|Sweden": {
+      "hg": 1,
+      "ag": 5
     }
   },
   "koGames": [],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-06-15T03:55:28.847Z"
+  "lastUpdated": "2026-06-15T04:00:28.971Z"
 };
