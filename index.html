@@ -75,8 +75,7 @@
   .who .nm{font-family:"Anton",sans-serif;font-size:26px;text-transform:uppercase;letter-spacing:.01em;line-height:1}
   .who .nm span{color:var(--pc)}
   .bar{height:7px;border-radius:99px;background:#0c1015;overflow:hidden}
-  .bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--pc),var(--pc));border-radius:99px;
-    width:0;transition:width 1s cubic-bezier(.2,.8,.2,1)}
+  .bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--pc),var(--pc));border-radius:99px;}
   .brk{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--mut)}
   .brk b{color:var(--ink);font-weight:600}
   .tot{text-align:right}
@@ -982,8 +981,6 @@ function renderBoard(){
       </div>`;
     el.appendChild(row);
   });
-  // animate bars
-  requestAnimationFrame(()=>el.querySelectorAll(".bar>i").forEach(i=>{const w=i.style.width;i.style.width="0";requestAnimationFrame(()=>i.style.width=w);}));
   const adv=advancers();
   document.getElementById("boardnote").innerHTML =
     `Scoring · group win ${SCORING.groupWin} · group draw ${SCORING.groupDraw} · advance ${SCORING.advance} · each knockout win ${SCORING.koWin} · Golden Boot ${SCORING.goldenBoot} · 3rd place ${SCORING.thirdPlace}.<br>`+
@@ -1306,7 +1303,7 @@ function scheduleSimHistory(){
       renderGroups();
     }
   }
-  setTimeout(tick,0);
+  setTimeout(tick, 0);
 }
 // Monotone cubic interpolation (Fritsch-Carlson) — no overshoot at any data point
 function monotonePath(pts){
