@@ -918,20 +918,23 @@ function eliminated(){ // KO losers
 
 function scores(){
   const A=advancers().set, out=eliminated();
-  const S={}; Object.keys(PLAYERS).forEach(p=>S[p]={total:0,gw:0,dr:0,adv:0,ko:0,gb:0,third:0,advanced:0,alive:0});
+  const S={}; Object.keys(PLAYERS).forEach(p=>S[p]={total:0,gw:0,dr:0,adv:0,ko:0,gb:0,third:0,advanced:0,alive:0,gp:0});
   // group win / draw points (live, per played game)
   GROUP_LETTERS.forEach(L=>fixtures(L).forEach(f=>{
     const r=R.groupGames[f.key]; if(!r)return; const hg=+r.hg,ag=+r.ag;
     if(r.hg===""||r.ag===""||r.hg==null||r.ag==null||Number.isNaN(hg)||Number.isNaN(ag))return;
     const ho=TEAMS[f.home].o, ao=TEAMS[f.away].o;
+    if(ho)S[ho].gp++; if(ao)S[ao].gp++;
     if(hg>ag){ if(ho){S[ho].gw+=SCORING.groupWin;} }
     else if(ag>hg){ if(ao){S[ao].gw+=SCORING.groupWin;} }
     else { if(ho)S[ho].dr+=SCORING.groupDraw; if(ao)S[ao].dr+=SCORING.groupDraw; }
   }));
   // advancement
   A.forEach(t=>{ const o=TEAMS[t].o; if(o)S[o].adv+=SCORING.advance; });
-  // KO wins
+  // KO wins + KO games played
   R.koGames.forEach(g=>{ const w=koWinner(g); if(w&&g.round!=='3P'){ const o=TEAMS[w]?.o; if(o)S[o].ko+=SCORING.koWin; } });
+  R.koGames.forEach(g=>{ if(!koWinner(g))return; const oa=TEAMS[g.a]?.o,ob=TEAMS[g.b]?.o; if(oa)S[oa].gp++; if(ob)S[ob].gp++; });
+  if(koWinner(R.thirdPlaceGame)){const oa=TEAMS[R.thirdPlaceGame?.a]?.o,ob=TEAMS[R.thirdPlaceGame?.b]?.o;if(oa)S[oa].gp++;if(ob)S[ob].gp++;}
   // awards
   if(R.goldenBoot){const o=TEAMS[R.goldenBoot]?.o; if(o)S[o].gb+=SCORING.goldenBoot;}
   const _3pw=koWinner(R.thirdPlaceGame);
@@ -971,7 +974,7 @@ function renderBoard(){
           <span>Advance <b>${x.adv}</b></span><span>KO wins <b>${x.ko}</b></span>
           <span>3rd <b>${x.third}</b></span><span>Golden Boot <b>${x.gb}</b></span>
         </div>
-        <div class="alive">Teams advanced <b>${x.advanced}</b> · Still alive <b>${x.alive}</b></div>
+        <div class="alive">Games played <b>${x.gp}</b> · Teams advanced <b>${x.advanced}</b> · Still alive <b>${x.alive}</b></div>
       </div>
       <div class="tot">
         <div class="pts">${x.total}</div><div class="lab">Points</div>
