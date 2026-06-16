@@ -66,10 +66,14 @@ window.WC_RESULTS = {
     "G|Belgium|Egypt": {
       "hg": 1,
       "ag": 1
+    },
+    "H|Uruguay|Saudi Arabia": {
+      "hg": 1,
+      "ag": 1
     }
   },
   "koGames": [],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-06-16T00:00:23.839Z"
+  "lastUpdated": "2026-06-16T00:05:24.984Z"
 };
