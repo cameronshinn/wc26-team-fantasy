@@ -158,6 +158,9 @@
   .bkt-team.won{background:rgba(255,255,255,.05);font-weight:600}
   .bkt-team.lost .bkt-tnm{opacity:.35}
   .bkt-team.lost .dot{opacity:.25}
+  .bkt-team.proj .bkt-tnm{opacity:.38;font-style:italic}
+  .bkt-team.proj .dot{opacity:.22}
+  .bkt-pct{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--mut2);flex-shrink:0;padding-left:4px}
   .bkt-tbd{color:var(--mut2);font-size:11px}
   .bkt-gf{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--mut2);flex-shrink:0}
   .bkt-date{font-family:var(--mono);font-size:9px;color:var(--mut2);text-align:center;
@@ -703,7 +706,7 @@ function paintGroupAdvChart(letter,advHistory){
   return `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px">${legend}</div>${svg}`;
 }
 
-let _simOdds=null,_simKey='';
+let _simOdds=null,_simKey='',_simAllSlots=null;
 const koWinner=g=>{
   if(!g||g.hg==null||g.ag==null)return null;
   if(g.hg>g.ag)return g.a;
@@ -722,8 +725,11 @@ function getSimOdds(){
     const max=Math.max(...Object.values(totals));
     const winners=Object.keys(PLAYERS).filter(p=>totals[p]===max);
     _simOdds=Object.fromEntries(Object.keys(PLAYERS).map(p=>[p,winners.includes(p)?1/winners.length:0]));
+    _simAllSlots=null;
   }else{
-    _simOdds=runMonteCarlo(10000,key).playerOdds;
+    const mc=runMonteCarlo(10000,key);
+    _simOdds=mc.playerOdds;
+    _simAllSlots=mc.allSlotModes;
   }
   _simKey=key;
   return _simOdds;
@@ -736,6 +742,12 @@ function runMonteCarlo(N,seedStr){
   _rng=()=>{s^=s<<13;s^=s>>17;s^=s<<5;return(s>>>0)/4294967296;};
   const wc={};Object.keys(PLAYERS).forEach(p=>wc[p]=0);
   const adv={};Object.keys(TEAMS).forEach(t=>adv[t]=0);
+  const r32Slots=Array.from({length:32},()=>({}));
+  const r16Slots=Array.from({length:16},()=>({}));
+  const qfSlots=Array.from({length:8},()=>({}));
+  const sfSlots=Array.from({length:4},()=>({}));
+  const finSlots=Array.from({length:2},()=>({}));
+  const thirdSlots=Array.from({length:2},()=>({}));
   const knownKO=new Map();
   R.koGames.forEach(g=>{
     const w=koWinner(g);
@@ -804,34 +816,61 @@ function runMonteCarlo(N,seedStr){
 
     // R32 — exact FIFA bracket (matches 73-88 in order)
     // gWinners/gRunners indices: A=0,B=1,C=2,D=3,E=4,F=5,G=6,H=7,I=8,J=9,K=10,L=11
-    const r32=[
-      sg(gRunners[0], gRunners[1]),  // 73: 2A vs 2B
-      sg(gWinners[4], t3(3)),        // 74: 1E vs 3rd (slot 3)
-      sg(gWinners[5], gRunners[2]),  // 75: 1F vs 2C
-      sg(gRunners[4], gRunners[8]),  // 76: 2E vs 2I
-      sg(gWinners[8], t3(5)),        // 77: 1I vs 3rd (slot 5)
-      sg(gWinners[2], gRunners[5]),  // 78: 1C vs 2F
-      sg(gWinners[0], t3(0)),        // 79: 1A vs 3rd (slot 0)
-      sg(gWinners[11],t3(7)),        // 80: 1L vs 3rd (slot 7)
-      sg(gWinners[3], t3(2)),        // 81: 1D vs 3rd (slot 2)
-      sg(gWinners[6], t3(4)),        // 82: 1G vs 3rd (slot 4)
-      sg(gWinners[7], gRunners[9]),  // 83: 1H vs 2J
-      sg(gRunners[3], gRunners[6]),  // 84: 2D vs 2G
-      sg(gWinners[1], t3(1)),        // 85: 1B vs 3rd (slot 1)
-      sg(gWinners[9], gRunners[7]),  // 86: 1J vs 2H
-      sg(gWinners[10],t3(6)),        // 87: 1K vs 3rd (slot 6)
-      sg(gRunners[10],gRunners[11]), // 88: 2K vs 2L
+    const r32Inputs=[
+      [gRunners[0], gRunners[1]],   // 73: 2A vs 2B
+      [gWinners[4], t3(3)],         // 74: 1E vs 3rd (slot 3)
+      [gWinners[5], gRunners[2]],   // 75: 1F vs 2C
+      [gRunners[4], gRunners[8]],   // 76: 2E vs 2I
+      [gWinners[8], t3(5)],         // 77: 1I vs 3rd (slot 5)
+      [gWinners[2], gRunners[5]],   // 78: 1C vs 2F
+      [gWinners[0], t3(0)],         // 79: 1A vs 3rd (slot 0)
+      [gWinners[11],t3(7)],         // 80: 1L vs 3rd (slot 7)
+      [gWinners[3], t3(2)],         // 81: 1D vs 3rd (slot 2)
+      [gWinners[6], t3(4)],         // 82: 1G vs 3rd (slot 4)
+      [gWinners[7], gRunners[9]],   // 83: 1H vs 2J
+      [gRunners[3], gRunners[6]],   // 84: 2D vs 2G
+      [gWinners[1], t3(1)],         // 85: 1B vs 3rd (slot 1)
+      [gWinners[9], gRunners[7]],   // 86: 1J vs 2H
+      [gWinners[10],t3(6)],         // 87: 1K vs 3rd (slot 6)
+      [gRunners[10],gRunners[11]],  // 88: 2K vs 2L
     ];
+    r32Inputs.forEach(([ta,tb],mi)=>{
+      if(ta)r32Slots[mi*2][ta]=(r32Slots[mi*2][ta]||0)+1;
+      if(tb)r32Slots[mi*2+1][tb]=(r32Slots[mi*2+1][tb]||0)+1;
+    });
+    const r32=r32Inputs.map(([a,b])=>sg(a,b));
 
     // R16 — adjacent R32 winners: (73,74),(75,76),...,(87,88)
-    const r16=[];for(let i=0;i<16;i+=2)r16.push(sg(r32[i],r32[i+1]));
+    // R16 — adjacent R32 winners
+    const r16=[];
+    for(let i=0;i<16;i+=2){
+      const ta=r32[i],tb=r32[i+1];
+      if(ta)r16Slots[i][ta]=(r16Slots[i][ta]||0)+1;
+      if(tb)r16Slots[i+1][tb]=(r16Slots[i+1][tb]||0)+1;
+      r16.push(sg(ta,tb));
+    }
     // QF — adjacent R16 winners
-    const qf=[];for(let i=0;i<8;i+=2)qf.push(sg(r16[i],r16[i+1]));
+    const qf=[];
+    for(let i=0;i<8;i+=2){
+      const ta=r16[i],tb=r16[i+1];
+      if(ta)qfSlots[i][ta]=(qfSlots[i][ta]||0)+1;
+      if(tb)qfSlots[i+1][tb]=(qfSlots[i+1][tb]||0)+1;
+      qf.push(sg(ta,tb));
+    }
     // SF
+    if(qf[0])sfSlots[0][qf[0]]=(sfSlots[0][qf[0]]||0)+1;
+    if(qf[1])sfSlots[1][qf[1]]=(sfSlots[1][qf[1]]||0)+1;
+    if(qf[2])sfSlots[2][qf[2]]=(sfSlots[2][qf[2]]||0)+1;
+    if(qf[3])sfSlots[3][qf[3]]=(sfSlots[3][qf[3]]||0)+1;
     const sf1=sg(qf[0],qf[1]),sf2=sg(qf[2],qf[3]);
     const sfL1=sf1===qf[0]?qf[1]:qf[0],sfL2=sf2===qf[2]?qf[3]:qf[2];
     // Final
+    if(sf1)finSlots[0][sf1]=(finSlots[0][sf1]||0)+1;
+    if(sf2)finSlots[1][sf2]=(finSlots[1][sf2]||0)+1;
     sg(sf1,sf2);
+    // 3rd place participants
+    if(sfL1)thirdSlots[0][sfL1]=(thirdSlots[0][sfL1]||0)+1;
+    if(sfL2)thirdSlots[1][sfL2]=(thirdSlots[1][sfL2]||0)+1;
 
     // 3rd place playoff — winner gets +3 only, not a KO win
     const _3pw=koWinner(R.thirdPlaceGame);
@@ -857,9 +896,18 @@ function runMonteCarlo(N,seedStr){
     wc[pw]++;
   }
 
+  function modeOf(slots){
+    return slots.map(counts=>{
+      const teams=Object.keys(counts);
+      if(!teams.length)return null;
+      const best=teams.reduce((a,b)=>counts[a]>=counts[b]?a:b);
+      return {team:best,pct:counts[best]/N};
+    });
+  }
   return {
     playerOdds: Object.fromEntries(Object.keys(wc).map(p=>[p,wc[p]/N])),
-    teamAdv: Object.fromEntries(Object.keys(TEAMS).map(t=>[t,adv[t]/N]))
+    teamAdv: Object.fromEntries(Object.keys(TEAMS).map(t=>[t,adv[t]/N])),
+    allSlotModes:{r32:modeOf(r32Slots),r16:modeOf(r16Slots),qf:modeOf(qfSlots),sf:modeOf(sfSlots),fin:modeOf(finSlots),third:modeOf(thirdSlots)}
   };
 }
 
@@ -1137,6 +1185,8 @@ function buildCurrentBracket(){
 function renderBracket(){
   const{r32,r16,qf,sf,fin,third}=buildCurrentBracket();
   const host=document.getElementById("bktroot"); if(!host)return; host.innerHTML='';
+  getSimOdds(); // ensure _simAllSlots is populated
+  const slotsByRound=[_simAllSlots?.r32,_simAllSlots?.r16,_simAllSlots?.qf,_simAllSlots?.sf];
   const rounds=[
     {label:"Round of 32",matches:r32,dates:KO_DATES.r32},
     {label:"Round of 16",matches:r16,dates:KO_DATES.r16},
@@ -1144,38 +1194,45 @@ function renderBracket(){
     {label:"Semi-finals",matches:sf,dates:KO_DATES.sf},
     {label:"Final",matches:fin,dates:KO_DATES.fin},
   ];
-  function makeMatchEl(m,date,scoresOverride){
+  function makeMatchEl(m,date,scoresOverride,slots,matchIdx){
     const wrap=document.createElement('div'); wrap.className='bkt-match';
     if(date){const d=document.createElement('div');d.className='bkt-date';d.textContent=date;wrap.appendChild(d);}
-    [m.a,m.b].forEach(team=>{
+    [[m.a, 0],[m.b, 1]].forEach(([team,side])=>{
+      const slotIdx=matchIdx!=null?matchIdx*2+side:null;
+      const slotMode=slots&&slotIdx!=null?slots[slotIdx]:null;
+      const proj=!team&&slotMode?slotMode.team:null;
+      const displayTeam=team||proj;
+      const isProj=!team&&!!proj;
       const won=team&&m.winner===team, lost=team&&m.winner&&m.winner!==team;
       const div=document.createElement('div');
-      div.className='bkt-team'+(won?' won':lost?' lost':'');
-      if(team){
+      div.className='bkt-team'+(isProj?' proj':won?' won':lost?' lost':'');
+      if(displayTeam){
         const sg=scoresOverride||R.koGames.find(g=>(g.a===m.a&&g.b===m.b)||(g.a===m.b&&g.b===m.a));
-        const isHome=sg&&sg.a===team;
-        const goals=sg&&sg.hg!=null&&sg.ag!=null?(isHome?sg.hg:sg.ag):null;
-        const pens=sg&&sg.penHg!=null&&sg.penAg!=null?(isHome?sg.penHg:sg.penAg):null;
+        const isHome=sg&&sg.a===displayTeam;
+        const goals=!isProj&&sg&&sg.hg!=null&&sg.ag!=null?(isHome?sg.hg:sg.ag):null;
+        const pens=!isProj&&sg&&sg.penHg!=null&&sg.penAg!=null?(isHome?sg.penHg:sg.penAg):null;
         const gStr=goals!=null?`<span class="bkt-gf">${goals}${pens!=null?` (${pens})`:''}</span>`:'';
-        div.innerHTML=`<span class="dot" style="--tc:${ownerColor(team)};margin-right:0;flex-shrink:0"></span><span class="bkt-tnm">${team}</span>${gStr}`;
+        const pctStr=isProj&&slotMode?`<span class="bkt-pct">${Math.round(slotMode.pct*100)}%</span>`:'';
+        div.innerHTML=`<span class="dot" style="--tc:${ownerColor(displayTeam)};margin-right:0;flex-shrink:0"></span><span class="bkt-tnm">${displayTeam}</span>${gStr||pctStr}`;
       }else{div.innerHTML=`<span class="bkt-tbd">—</span>`;}
       wrap.appendChild(div);
     });
     return wrap;
   }
   // Render R32 → SF columns normally
-  rounds.slice(0,-1).forEach(({matches,dates})=>{
+  rounds.slice(0,-1).forEach(({matches,dates},ri)=>{
+    const slots=slotsByRound[ri]||null;
     const col=document.createElement('div'); col.className='bkt-round';
-    matches.forEach((m,i)=>col.appendChild(makeMatchEl(m,dates[i])));
+    matches.forEach((m,i)=>col.appendChild(makeMatchEl(m,dates[i],null,slots,i)));
     host.appendChild(col);
   });
   // Final column: Final centered, 3rd place pinned to bottom
   const finCol=document.createElement('div'); finCol.className='bkt-round'; finCol.style.justifyContent='flex-start';
   const topSpacer=document.createElement('div'); topSpacer.style.flex='1'; finCol.appendChild(topSpacer);
-  finCol.appendChild(makeMatchEl(fin[0],KO_DATES.fin[0]));
+  finCol.appendChild(makeMatchEl(fin[0],KO_DATES.fin[0],null,_simAllSlots?.fin,0));
   const btm=document.createElement('div'); btm.style.cssText='flex:1;display:flex;flex-direction:column;justify-content:flex-end';
   const tLbl=document.createElement('div'); tLbl.className='bkt-third-label'; tLbl.textContent='3rd Place';
-  btm.appendChild(tLbl); btm.appendChild(makeMatchEl(third[0],KO_DATES.third[0],R.thirdPlaceGame||null));
+  btm.appendChild(tLbl); btm.appendChild(makeMatchEl(third[0],KO_DATES.third[0],R.thirdPlaceGame||null,_simAllSlots?.third,0));
   finCol.appendChild(btm); host.appendChild(finCol);
   const hdr=document.getElementById("bkthdr");
   if(hdr) hdr.innerHTML=rounds.map(r=>`<div class="bkt-hlabel">${r.label}</div>`).join('');
