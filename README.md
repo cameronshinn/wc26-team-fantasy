@@ -66,5 +66,5 @@ The **Copy** button copies the same content to your clipboard if you'd rather pa
   the eight best third-place spots resolve once all 12 groups are done.
 - All 48 teams are drafted (12 each across Luke, Grant, Cam, and Peter).
 - Host nations (USA, Canada, Mexico) receive a +100 Elo bonus in every simulation run.
-- Win probability is computed from 5,000 Monte Carlo simulations per matchday snapshot; the live leaderboard
-  odds use 10,000 runs.
+- Win probability is computed from 10,000 Monte Carlo simulations per matchday snapshot; the live leaderboard
+  odds use 20,000 runs.

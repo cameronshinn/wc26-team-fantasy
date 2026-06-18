@@ -242,7 +242,7 @@
   <section class="view" id="v-about">
     <div class="sim-explainer">
       <h3>How the simulation works</h3>
-      <p>Each data point on the chart represents 5,000 independent simulations of the remainder of the tournament from that moment in time, using real results where available and simulated results for unplayed games. Win probability is the fraction of those runs where each manager finishes with the highest point total.</p>
+      <p>Each data point on the chart represents 10,000 independent simulations of the remainder of the tournament from that moment in time, using real results where available and simulated results for unplayed games. Win probability is the fraction of those runs where each manager finishes with the highest point total.</p>
 
       <h3>Group stage</h3>
       <p>Each unplayed match is resolved by drawing goals independently from a <strong>Poisson distribution</strong>. The expected goals for each team are set by the Elo gap between them:</p>
@@ -506,7 +506,7 @@ const THIRD_SEEDING={
 };
 
 const ELO_NOISE=150;
-const SIM_N_HISTORY=5000;
+const SIM_N_HISTORY=10000;
 document.querySelectorAll('#meth-elo-noise-1,#meth-elo-noise-2').forEach(el=>el.textContent=ELO_NOISE);
 document.getElementById('meth-elo-noise-3').textContent=ELO_NOISE*2;
 const HOME_BOOST=100; // Elo boost for host nations (USA, Canada, Mexico)
@@ -723,7 +723,7 @@ function getSimOdds(){
     const winners=Object.keys(PLAYERS).filter(p=>totals[p]===max);
     _simOdds=Object.fromEntries(Object.keys(PLAYERS).map(p=>[p,winners.includes(p)?1/winners.length:0]));
   }else{
-    _simOdds=runMonteCarlo(10000,key).playerOdds;
+    _simOdds=runMonteCarlo(20000,key).playerOdds;
   }
   _simKey=key;
   return _simOdds;
@@ -985,7 +985,7 @@ function renderBoard(){
   document.getElementById("boardnote").innerHTML =
     `Scoring · group win ${SCORING.groupWin} · group draw ${SCORING.groupDraw} · advance ${SCORING.advance} · each knockout win ${SCORING.koWin} · Golden Boot ${SCORING.goldenBoot} · 3rd place ${SCORING.thirdPlace}.<br>`+
     (adv.thirdsResolved? "All groups complete — best-third places resolved." : "Best-third-place spots resolve once every group has played all six games.")+
-    ` Win % from 10,000-run Monte Carlo simulation, updated live as results come in.`;
+    ` Win % from 20,000-run Monte Carlo simulation, updated live as results come in.`;
 }
 
 function renderGroups(){
