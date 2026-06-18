@@ -283,6 +283,7 @@
 
   <section class="view" id="v-knockout">
     <div class="bkt-outer"><div class="bkt-hdr" id="bkthdr"></div><div class="bkt" id="bktroot"></div></div>
+    <p class="odds-note">Projected bracket: the most likely team per slot is determined by Monte Carlo simulation of the group stage, then each knockout match is decided by the higher Elo-rated team. Projected teams are shown in italics. Real results replace projections as they come in.</p>
     <div class="bkt-sep"></div>
     <div class="korounds" id="korounds"></div>
   </section>
@@ -743,11 +744,6 @@ function runMonteCarlo(N,seedStr){
   const wc={};Object.keys(PLAYERS).forEach(p=>wc[p]=0);
   const adv={};Object.keys(TEAMS).forEach(t=>adv[t]=0);
   const r32Slots=Array.from({length:32},()=>({}));
-  const r16Slots=Array.from({length:16},()=>({}));
-  const qfSlots=Array.from({length:8},()=>({}));
-  const sfSlots=Array.from({length:4},()=>({}));
-  const finSlots=Array.from({length:2},()=>({}));
-  const thirdSlots=Array.from({length:2},()=>({}));
   const knownKO=new Map();
   R.koGames.forEach(g=>{
     const w=koWinner(g);
@@ -840,37 +836,12 @@ function runMonteCarlo(N,seedStr){
     });
     const r32=r32Inputs.map(([a,b])=>sg(a,b));
 
-    // R16 — adjacent R32 winners: (73,74),(75,76),...,(87,88)
-    // R16 — adjacent R32 winners
-    const r16=[];
-    for(let i=0;i<16;i+=2){
-      const ta=r32[i],tb=r32[i+1];
-      if(ta)r16Slots[i][ta]=(r16Slots[i][ta]||0)+1;
-      if(tb)r16Slots[i+1][tb]=(r16Slots[i+1][tb]||0)+1;
-      r16.push(sg(ta,tb));
-    }
-    // QF — adjacent R16 winners
-    const qf=[];
-    for(let i=0;i<8;i+=2){
-      const ta=r16[i],tb=r16[i+1];
-      if(ta)qfSlots[i][ta]=(qfSlots[i][ta]||0)+1;
-      if(tb)qfSlots[i+1][tb]=(qfSlots[i+1][tb]||0)+1;
-      qf.push(sg(ta,tb));
-    }
-    // SF
-    if(qf[0])sfSlots[0][qf[0]]=(sfSlots[0][qf[0]]||0)+1;
-    if(qf[1])sfSlots[1][qf[1]]=(sfSlots[1][qf[1]]||0)+1;
-    if(qf[2])sfSlots[2][qf[2]]=(sfSlots[2][qf[2]]||0)+1;
-    if(qf[3])sfSlots[3][qf[3]]=(sfSlots[3][qf[3]]||0)+1;
+    // R16 → Final
+    const r16=[];for(let i=0;i<16;i+=2)r16.push(sg(r32[i],r32[i+1]));
+    const qf=[];for(let i=0;i<8;i+=2)qf.push(sg(r16[i],r16[i+1]));
     const sf1=sg(qf[0],qf[1]),sf2=sg(qf[2],qf[3]);
     const sfL1=sf1===qf[0]?qf[1]:qf[0],sfL2=sf2===qf[2]?qf[3]:qf[2];
-    // Final
-    if(sf1)finSlots[0][sf1]=(finSlots[0][sf1]||0)+1;
-    if(sf2)finSlots[1][sf2]=(finSlots[1][sf2]||0)+1;
     sg(sf1,sf2);
-    // 3rd place participants
-    if(sfL1)thirdSlots[0][sfL1]=(thirdSlots[0][sfL1]||0)+1;
-    if(sfL2)thirdSlots[1][sfL2]=(thirdSlots[1][sfL2]||0)+1;
 
     // 3rd place playoff — winner gets +3 only, not a KO win
     const _3pw=koWinner(R.thirdPlaceGame);
@@ -907,7 +878,7 @@ function runMonteCarlo(N,seedStr){
   return {
     playerOdds: Object.fromEntries(Object.keys(wc).map(p=>[p,wc[p]/N])),
     teamAdv: Object.fromEntries(Object.keys(TEAMS).map(t=>[t,adv[t]/N])),
-    allSlotModes:{r32:modeOf(r32Slots),r16:modeOf(r16Slots),qf:modeOf(qfSlots),sf:modeOf(sfSlots),fin:modeOf(finSlots),third:modeOf(thirdSlots)}
+    allSlotModes:{r32:modeOf(r32Slots)}
   };
 }
 
@@ -1182,57 +1153,86 @@ function buildCurrentBracket(){
   const third=[{a:sfL[0],b:sfL[1],winner:koWinner(R.thirdPlaceGame)}];
   return{r32,r16,qf,sf,fin,third};
 }
+function buildSimProjectedBracket(){
+  const modes=_simAllSlots?.r32;
+  if(!modes)return null;
+  function ep(a,b){
+    if(!a||!b)return null;
+    const ea=(ELO[a]||1750)+(HOME_TEAMS.has(a)?HOME_BOOST:0);
+    const eb=(ELO[b]||1750)+(HOME_TEAMS.has(b)?HOME_BOOST:0);
+    return 1/(1+Math.pow(10,-(ea-eb)/400));
+  }
+  // cumA/cumB = cumulative probability of each team reaching THIS match.
+  // advCum = cumulative probability of the projected winner reaching the NEXT round.
+  function mkM(a,b,cumA,cumB){
+    const p=ep(a,b),pB=p!=null?1-p:null;
+    const winner=p!=null?(p>=0.5?a:b):(a||b);
+    const advCum=winner===a?(cumA??1)*(p??1):(cumB??1)*(pB??1);
+    return{a,b,pA:p,pB,winner,cumA:cumA??1,cumB:cumB??1,advCum};
+  }
+  // R32: seed cumulative probability from Monte Carlo slot probability
+  const r32=Array.from({length:16},(_,i)=>mkM(
+    modes[i*2]?.team||null,modes[i*2+1]?.team||null,
+    modes[i*2]?.pct??1,modes[i*2+1]?.pct??1
+  ));
+  // Each subsequent round: carry advCum of the winner forward as the new cumulative
+  const r16=Array.from({length:8},(_,i)=>mkM(r32[i*2].winner,r32[i*2+1].winner,r32[i*2].advCum,r32[i*2+1].advCum));
+  const qf=Array.from({length:4},(_,i)=>mkM(r16[i*2].winner,r16[i*2+1].winner,r16[i*2].advCum,r16[i*2+1].advCum));
+  const sf=[mkM(qf[0].winner,qf[1].winner,qf[0].advCum,qf[1].advCum),mkM(qf[2].winner,qf[3].winner,qf[2].advCum,qf[3].advCum)];
+  const fin=[mkM(sf[0].winner,sf[1].winner,sf[0].advCum,sf[1].advCum)];
+  // 3rd place: SF losers; their cum = P(reached SF) × P(lost SF)
+  const sfL0=sf[0].winner===sf[0].a?sf[0].b:sf[0].a;
+  const sfL1=sf[1].winner===sf[1].a?sf[1].b:sf[1].a;
+  const cumL0=sf[0].winner===sf[0].a?sf[0].cumB*(sf[0].pA??0):sf[0].cumA*(sf[0].pB??0);
+  const cumL1=sf[1].winner===sf[1].a?sf[1].cumB*(sf[1].pA??0):sf[1].cumA*(sf[1].pB??0);
+  const third=[mkM(sfL0,sfL1,cumL0,cumL1)];
+  return{r32,r16,qf,sf,fin,third};
+}
 function renderBracket(){
   const{r32,r16,qf,sf,fin,third}=buildCurrentBracket();
   const host=document.getElementById("bktroot"); if(!host)return; host.innerHTML='';
   getSimOdds(); // ensure _simAllSlots is populated
-  const slotsByRound=[_simAllSlots?.r32,_simAllSlots?.r16,_simAllSlots?.qf,_simAllSlots?.sf];
+  const simBkt=buildSimProjectedBracket();
   const rounds=[
-    {label:"Round of 32",matches:r32,dates:KO_DATES.r32},
-    {label:"Round of 16",matches:r16,dates:KO_DATES.r16},
-    {label:"Quarter-finals",matches:qf,dates:KO_DATES.qf},
-    {label:"Semi-finals",matches:sf,dates:KO_DATES.sf},
-    {label:"Final",matches:fin,dates:KO_DATES.fin},
+    {label:"Round of 32",matches:r32,dates:KO_DATES.r32,sim:simBkt?.r32},
+    {label:"Round of 16",matches:r16,dates:KO_DATES.r16,sim:simBkt?.r16},
+    {label:"Quarter-finals",matches:qf,dates:KO_DATES.qf,sim:simBkt?.qf},
+    {label:"Semi-finals",matches:sf,dates:KO_DATES.sf,sim:simBkt?.sf},
+    {label:"Final",matches:fin,dates:KO_DATES.fin,sim:simBkt?.fin},
   ];
-  function makeMatchEl(m,date,scoresOverride,slots,matchIdx){
+  function makeMatchEl(m,date,scoresOverride,simMatch){
     const wrap=document.createElement('div'); wrap.className='bkt-match';
     if(date){const d=document.createElement('div');d.className='bkt-date';d.textContent=date;wrap.appendChild(d);}
-    [[m.a, 0],[m.b, 1]].forEach(([team,side])=>{
-      const slotIdx=matchIdx!=null?matchIdx*2+side:null;
-      const slotMode=slots&&slotIdx!=null?slots[slotIdx]:null;
-      const proj=!team&&slotMode?slotMode.team:null;
-      const displayTeam=team||proj;
-      const isProj=!team&&!!proj;
+    [[m.a,simMatch?.a,simMatch?.cumA],[m.b,simMatch?.b,simMatch?.cumB]].forEach(([team,projTeam,cum])=>{
+      const disp=team||projTeam||null;
+      const isProj=!team&&!!projTeam;
       const won=team&&m.winner===team, lost=team&&m.winner&&m.winner!==team;
       const div=document.createElement('div');
       div.className='bkt-team'+(isProj?' proj':won?' won':lost?' lost':'');
-      if(displayTeam){
+      if(disp){
         const sg=scoresOverride||R.koGames.find(g=>(g.a===m.a&&g.b===m.b)||(g.a===m.b&&g.b===m.a));
-        const isHome=sg&&sg.a===displayTeam;
+        const isHome=sg&&sg.a===disp;
         const goals=!isProj&&sg&&sg.hg!=null&&sg.ag!=null?(isHome?sg.hg:sg.ag):null;
         const pens=!isProj&&sg&&sg.penHg!=null&&sg.penAg!=null?(isHome?sg.penHg:sg.penAg):null;
         const gStr=goals!=null?`<span class="bkt-gf">${goals}${pens!=null?` (${pens})`:''}</span>`:'';
-        const pctStr=isProj&&slotMode?`<span class="bkt-pct">${Math.round(slotMode.pct*100)}%</span>`:'';
-        div.innerHTML=`<span class="dot" style="--tc:${ownerColor(displayTeam)};margin-right:0;flex-shrink:0"></span><span class="bkt-tnm">${displayTeam}</span>${gStr||pctStr}`;
+        div.innerHTML=`<span class="dot" style="--tc:${ownerColor(disp)};margin-right:0;flex-shrink:0"></span><span class="bkt-tnm">${disp}</span>${gStr}`;
       }else{div.innerHTML=`<span class="bkt-tbd">—</span>`;}
       wrap.appendChild(div);
     });
     return wrap;
   }
-  // Render R32 → SF columns normally
-  rounds.slice(0,-1).forEach(({matches,dates},ri)=>{
-    const slots=slotsByRound[ri]||null;
+  rounds.slice(0,-1).forEach(({matches,dates,sim})=>{
     const col=document.createElement('div'); col.className='bkt-round';
-    matches.forEach((m,i)=>col.appendChild(makeMatchEl(m,dates[i],null,slots,i)));
+    matches.forEach((m,i)=>col.appendChild(makeMatchEl(m,dates[i],null,sim?.[i])));
     host.appendChild(col);
   });
   // Final column: Final centered, 3rd place pinned to bottom
   const finCol=document.createElement('div'); finCol.className='bkt-round'; finCol.style.justifyContent='flex-start';
   const topSpacer=document.createElement('div'); topSpacer.style.flex='1'; finCol.appendChild(topSpacer);
-  finCol.appendChild(makeMatchEl(fin[0],KO_DATES.fin[0],null,_simAllSlots?.fin,0));
+  finCol.appendChild(makeMatchEl(fin[0],KO_DATES.fin[0],null,simBkt?.fin?.[0]));
   const btm=document.createElement('div'); btm.style.cssText='flex:1;display:flex;flex-direction:column;justify-content:flex-end';
   const tLbl=document.createElement('div'); tLbl.className='bkt-third-label'; tLbl.textContent='3rd Place';
-  btm.appendChild(tLbl); btm.appendChild(makeMatchEl(third[0],KO_DATES.third[0],R.thirdPlaceGame||null,_simAllSlots?.third,0));
+  btm.appendChild(tLbl); btm.appendChild(makeMatchEl(third[0],KO_DATES.third[0],R.thirdPlaceGame||null,simBkt?.third?.[0]));
   finCol.appendChild(btm); host.appendChild(finCol);
   const hdr=document.getElementById("bkthdr");
   if(hdr) hdr.innerHTML=rounds.map(r=>`<div class="bkt-hlabel">${r.label}</div>`).join('');
