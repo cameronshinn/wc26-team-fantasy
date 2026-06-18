@@ -98,10 +98,14 @@ window.WC_RESULTS = {
     "L|England|Croatia": {
       "hg": 4,
       "ag": 2
+    },
+    "L|Ghana|Panama": {
+      "hg": 1,
+      "ag": 0
     }
   },
   "koGames": [],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-06-18T01:00:24.588Z"
+  "lastUpdated": "2026-06-18T01:05:22.492Z"
 };
