@@ -130,10 +130,14 @@ window.WC_RESULTS = {
     "C|Morocco|Scotland": {
       "hg": 1,
       "ag": 0
+    },
+    "C|Haiti|Brazil": {
+      "hg": 0,
+      "ag": 3
     }
   },
   "koGames": [],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-06-20T02:30:24.459Z"
+  "lastUpdated": "2026-06-20T02:35:23.008Z"
 };
