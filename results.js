@@ -150,10 +150,14 @@ window.WC_RESULTS = {
     "E|Curacao|Ecuador": {
       "hg": 0,
       "ag": 0
+    },
+    "F|Japan|Tunisia": {
+      "hg": 4,
+      "ag": 0
     }
   },
   "koGames": [],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-06-21T05:55:19.199Z"
+  "lastUpdated": "2026-06-21T06:00:24.559Z"
 };
