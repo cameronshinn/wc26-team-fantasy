@@ -187,5 +187,5 @@ window.WC_RESULTS = {
   "koGames": [],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-06-23T03:35:22.989Z"
+  "lastUpdated": "2026-06-23T03:40:21.489Z"
 };
