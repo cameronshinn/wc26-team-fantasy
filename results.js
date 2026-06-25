@@ -226,10 +226,18 @@ window.WC_RESULTS = {
     "A|South Korea|South Africa": {
       "hg": 0,
       "ag": 1
+    },
+    "E|Germany|Ecuador": {
+      "hg": 1,
+      "ag": 2
+    },
+    "E|Ivory Coast|Curacao": {
+      "hg": 2,
+      "ag": 0
     }
   },
   "koGames": [],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-06-25T21:55:20.499Z"
+  "lastUpdated": "2026-06-25T22:00:25.476Z"
 };
