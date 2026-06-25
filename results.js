@@ -218,10 +218,18 @@ window.WC_RESULTS = {
     "C|Brazil|Scotland": {
       "hg": 3,
       "ag": 0
+    },
+    "A|Czechia|Mexico": {
+      "hg": 0,
+      "ag": 3
+    },
+    "A|South Korea|South Africa": {
+      "hg": 0,
+      "ag": 1
     }
   },
   "koGames": [],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-06-25T02:55:20.702Z"
+  "lastUpdated": "2026-06-25T03:00:22.318Z"
 };
