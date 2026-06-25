@@ -210,10 +210,18 @@ window.WC_RESULTS = {
     "B|Qatar|Bosnia": {
       "hg": 1,
       "ag": 3
+    },
+    "C|Haiti|Morocco": {
+      "hg": 2,
+      "ag": 4
+    },
+    "C|Brazil|Scotland": {
+      "hg": 3,
+      "ag": 0
     }
   },
   "koGames": [],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-06-25T00:00:21.695Z"
+  "lastUpdated": "2026-06-25T00:05:20.185Z"
 };
