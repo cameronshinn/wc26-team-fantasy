@@ -349,7 +349,7 @@
     "Curacao": 1434,
     "Qatar": 1421
   },
-  "_lastFetched": "2026-06-25T22:20:24.949Z",
+  "_lastFetched": "2026-06-25T23:25:19.984Z",
   "2026-06-13": {
     "Spain": 2157,
     "Argentina": 2115,
@@ -959,15 +959,15 @@
     "Colombia": 2006,
     "Portugal": 1988,
     "Netherlands": 1972,
-    "Germany": 1954,
     "Norway": 1951,
     "Japan": 1925,
+    "Germany": 1916,
     "Switzerland": 1914,
     "Mexico": 1912,
+    "Ecuador": 1902,
     "Croatia": 1896,
     "Morocco": 1877,
     "Belgium": 1869,
-    "Ecuador": 1864,
     "Uruguay": 1851,
     "Austria": 1841,
     "USA": 1820,
@@ -979,8 +979,8 @@
     "Iran": 1766,
     "Canada": 1748,
     "Scotland": 1745,
+    "Ivory Coast": 1743,
     "Egypt": 1740,
-    "Ivory Coast": 1728,
     "Sweden": 1727,
     "South Korea": 1723,
     "Czechia": 1680,
@@ -997,7 +997,7 @@
     "Tunisia": 1570,
     "New Zealand": 1549,
     "Haiti": 1517,
-    "Curacao": 1453,
+    "Curacao": 1438,
     "Qatar": 1411
   }
 }
