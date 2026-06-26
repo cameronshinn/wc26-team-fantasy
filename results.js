@@ -234,10 +234,18 @@ window.WC_RESULTS = {
     "E|Ivory Coast|Curacao": {
       "hg": 2,
       "ag": 0
+    },
+    "F|Netherlands|Tunisia": {
+      "hg": 3,
+      "ag": 1
+    },
+    "F|Sweden|Japan": {
+      "hg": 1,
+      "ag": 1
     }
   },
   "koGames": [],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-06-26T00:55:22.834Z"
+  "lastUpdated": "2026-06-26T01:00:22.882Z"
 };
