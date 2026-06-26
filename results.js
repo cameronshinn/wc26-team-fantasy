@@ -250,10 +250,14 @@ window.WC_RESULTS = {
     "D|Australia|Paraguay": {
       "hg": 0,
       "ag": 0
+    },
+    "I|France|Norway": {
+      "hg": 4,
+      "ag": 1
     }
   },
   "koGames": [],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-06-26T21:00:23.517Z"
+  "lastUpdated": "2026-06-26T21:05:20.454Z"
 };
