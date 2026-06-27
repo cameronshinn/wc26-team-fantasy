@@ -368,7 +368,7 @@ const MATCH_DATES={
 
 /* KO match dates by bracket position index */
 const KO_DATES={
-  r32:['Jun 28','Jun 29','Jun 29','Jun 29','Jun 30','Jun 30','Jun 30','Jul 1','Jul 1','Jul 1','Jul 2','Jul 2','Jul 2','Jul 3','Jul 3','Jul 3'],
+  r32:['Jun 29','Jun 30','Jun 28','Jun 29','Jul 2','Jul 2','Jul 1','Jul 1','Jun 29','Jun 30','Jun 30','Jul 1','Jul 3','Jul 3','Jul 2','Jul 3'],
   r16:['Jul 4','Jul 4','Jul 5','Jul 5','Jul 6','Jul 6','Jul 7','Jul 7'],
   qf:['Jul 9','Jul 10','Jul 11','Jul 11'],
   sf:['Jul 14','Jul 15'],
@@ -810,25 +810,27 @@ function runMonteCarlo(N,seedStr){
       tgoals[w]+=3;return w;
     }
 
-    // R32 — exact FIFA bracket (matches 73-88 in order)
+    // R32 — FIFA bracket ordered so adjacent pairs feed the correct R16 match.
+    // R16 pairings: (74,77)→89→QF97, (73,75)→90→QF97, (83,84)→93→QF98, (81,82)→94→QF98,
+    //               (76,78)→91→QF99, (79,80)→92→QF99, (86,88)→95→QF100, (85,87)→96→QF100
     // gWinners/gRunners indices: A=0,B=1,C=2,D=3,E=4,F=5,G=6,H=7,I=8,J=9,K=10,L=11
     const r32Inputs=[
-      [gRunners[0], gRunners[1]],   // 73: 2A vs 2B
-      [gWinners[4], t3(3)],         // 74: 1E vs 3rd (slot 3)
-      [gWinners[5], gRunners[2]],   // 75: 1F vs 2C
-      [gRunners[4], gRunners[8]],   // 76: 2E vs 2I
+      [gWinners[4], t3(3)],         // 74: 1E vs 3rd (slot 3)     → R16 match 89 with 77
       [gWinners[8], t3(5)],         // 77: 1I vs 3rd (slot 5)
-      [gWinners[2], gRunners[5]],   // 78: 1C vs 2F
-      [gWinners[0], t3(0)],         // 79: 1A vs 3rd (slot 0)
-      [gWinners[11],t3(7)],         // 80: 1L vs 3rd (slot 7)
-      [gWinners[3], t3(2)],         // 81: 1D vs 3rd (slot 2)
+      [gRunners[0], gRunners[1]],   // 73: 2A vs 2B               → R16 match 90 with 75
+      [gWinners[5], gRunners[2]],   // 75: 1F vs 2C
+      [gRunners[10],gRunners[11]],  // 83: 2K vs 2L               → R16 match 93 with 84
+      [gWinners[7], gRunners[9]],   // 84: 1H vs 2J
+      [gWinners[3], t3(2)],         // 81: 1D vs 3rd (slot 2)     → R16 match 94 with 82
       [gWinners[6], t3(4)],         // 82: 1G vs 3rd (slot 4)
-      [gWinners[7], gRunners[9]],   // 83: 1H vs 2J
-      [gRunners[3], gRunners[6]],   // 84: 2D vs 2G
-      [gWinners[1], t3(1)],         // 85: 1B vs 3rd (slot 1)
-      [gWinners[9], gRunners[7]],   // 86: 1J vs 2H
+      [gWinners[2], gRunners[5]],   // 76: 1C vs 2F               → R16 match 91 with 78
+      [gRunners[4], gRunners[8]],   // 78: 2E vs 2I
+      [gWinners[0], t3(0)],         // 79: 1A vs 3rd (slot 0)     → R16 match 92 with 80
+      [gWinners[11],t3(7)],         // 80: 1L vs 3rd (slot 7)
+      [gWinners[9], gRunners[7]],   // 86: 1J vs 2H               → R16 match 95 with 88
+      [gRunners[3], gRunners[6]],   // 88: 2D vs 2G
+      [gWinners[1], t3(1)],         // 85: 1B vs 3rd (slot 1)     → R16 match 96 with 87
       [gWinners[10],t3(6)],         // 87: 1K vs 3rd (slot 6)
-      [gRunners[10],gRunners[11]],  // 88: 2K vs 2L
     ];
     r32Inputs.forEach(([ta,tb],mi)=>{
       if(ta)r32Slots[mi*2][ta]=(r32Slots[mi*2][ta]||0)+1;
@@ -1150,10 +1152,10 @@ function buildCurrentBracket(){
   R.koGames.forEach(g=>{const w=koWinner(g);if(w&&g.a&&g.b){koW.set(g.a+'|'+g.b,w);koW.set(g.b+'|'+g.a,w);}});
   const kow=(a,b)=>(a&&b)?koW.get(a+'|'+b)||null:null;
   const r32pairs=[
-    [gR[0],gR[1]],[gW[4],t3(3)],[gW[5],gR[2]],[gR[4],gR[8]],
-    [gW[8],t3(5)],[gW[2],gR[5]],[gW[0],t3(0)],[gW[11],t3(7)],
-    [gW[3],t3(2)],[gW[6],t3(4)],[gW[7],gR[9]],[gR[3],gR[6]],
-    [gW[1],t3(1)],[gW[9],gR[7]],[gW[10],t3(6)],[gR[10],gR[11]],
+    [gW[4],t3(3)],[gW[8],t3(5)],[gR[0],gR[1]],[gW[5],gR[2]],   // 74,77 → R16m89; 73,75 → R16m90
+    [gR[10],gR[11]],[gW[7],gR[9]],[gW[3],t3(2)],[gW[6],t3(4)], // 83,84 → R16m93; 81,82 → R16m94
+    [gW[2],gR[5]],[gR[4],gR[8]],[gW[0],t3(0)],[gW[11],t3(7)],  // 76,78 → R16m91; 79,80 → R16m92
+    [gW[9],gR[7]],[gR[3],gR[6]],[gW[1],t3(1)],[gW[10],t3(6)],  // 86,88 → R16m95; 85,87 → R16m96
   ];
   const mk=pairs=>pairs.map(([a,b])=>({a,b,winner:kow(a,b)}));
   const nx=prev=>{const p=[];for(let i=0;i<prev.length;i+=2)p.push([prev[i].winner,prev[i+1].winner]);return mk(p);};
