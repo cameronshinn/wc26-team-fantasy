@@ -959,9 +959,18 @@ function scores(){
   if(_3pw){const o=TEAMS[_3pw]?.o; if(o)S[o].third+=SCORING.thirdPlace;}
   // advanced = teams confirmed in R32
   A.forEach(t=>{const o=TEAMS[t].o; if(o)S[o].advanced++;});
-  // alive: pre-tournament show all 12; in-tournament show advanced teams not yet KO-eliminated
+  // alive: pre-tournament show all 12; during group stage count confirmed advancers + teams in incomplete groups
+  // + 3rd-place teams from complete groups (still competing for best-8-thirds until all groups done);
+  // in KO stage count advancers not yet eliminated
   if(A.size>0||out.size>0){
     A.forEach(t=>{const o=TEAMS[t].o; if(o&&!out.has(t))S[o].alive++;});
+    if(out.size===0&&!allGroupsComplete()){ // group stage, thirds not yet resolved
+      GROUP_LETTERS.forEach(L=>{
+        const s=groupStandings(L);
+        if(!s.complete){s.ranked.forEach(r=>{const o=TEAMS[r.team].o; if(o)S[o].alive++;});}
+        else{const o=TEAMS[s.ranked[2].team]?.o; if(o)S[o].alive++;} // 3rd place still in best-thirds contention
+      });
+    }
   }else{
     Object.keys(TEAMS).forEach(t=>{const o=TEAMS[t].o; if(o)S[o].alive++;});
   }
