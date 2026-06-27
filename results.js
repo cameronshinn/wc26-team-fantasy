@@ -258,10 +258,18 @@ window.WC_RESULTS = {
     "I|Iraq|Senegal": {
       "hg": 0,
       "ag": 5
+    },
+    "H|Spain|Uruguay": {
+      "hg": 1,
+      "ag": 0
+    },
+    "H|Saudi Arabia|Cape Verde": {
+      "hg": 0,
+      "ag": 0
     }
   },
   "koGames": [],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-06-27T02:00:26.000Z"
+  "lastUpdated": "2026-06-27T02:05:17.513Z"
 };
