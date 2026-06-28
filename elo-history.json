@@ -349,7 +349,7 @@
     "Curacao": 1434,
     "Qatar": 1421
   },
-  "_lastFetched": "2026-06-28T10:05:23.844Z",
+  "_lastFetched": "2026-06-28T11:10:20.121Z",
   "2026-06-13": {
     "Spain": 2157,
     "Argentina": 2115,
@@ -1101,8 +1101,8 @@
     "Qatar": 1411
   },
   "2026-06-28": {
+    "Argentina": 2148,
     "Spain": 2144,
-    "Argentina": 2144,
     "France": 2123,
     "England": 2038,
     "Brazil": 2009,
@@ -1121,11 +1121,11 @@
     "Turkey": 1852,
     "Senegal": 1842,
     "Uruguay": 1841,
-    "Austria": 1841,
+    "Austria": 1836,
     "Paraguay": 1815,
     "Australia": 1800,
+    "Algeria": 1785,
     "USA": 1781,
-    "Algeria": 1780,
     "Iran": 1764,
     "Canada": 1748,
     "Scotland": 1745,
@@ -1136,8 +1136,8 @@
     "DR Congo": 1712,
     "Czechia": 1680,
     "Panama": 1658,
-    "Jordan": 1632,
     "Uzbekistan": 1631,
+    "Jordan": 1628,
     "Bosnia": 1622,
     "Cape Verde": 1622,
     "Saudi Arabia": 1596,
