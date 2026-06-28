@@ -300,8 +300,16 @@ window.WC_RESULTS = {
       "ag": 3
     }
   },
-  "koGames": [],
+  "koGames": [
+    {
+      "round": "R32",
+      "a": "South Africa",
+      "b": "Canada",
+      "hg": 0,
+      "ag": 1
+    }
+  ],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-06-28T20:55:19.783Z"
+  "lastUpdated": "2026-06-28T21:00:24.266Z"
 };
