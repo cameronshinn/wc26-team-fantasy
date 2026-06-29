@@ -314,9 +314,18 @@ window.WC_RESULTS = {
       "b": "Japan",
       "hg": 2,
       "ag": 1
+    },
+    {
+      "round": "R32",
+      "a": "Germany",
+      "b": "Paraguay",
+      "hg": 0,
+      "ag": 0,
+      "penHg": 4,
+      "penAg": 5
     }
   ],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-06-29T23:25:20.881Z"
+  "lastUpdated": "2026-06-29T23:30:22.401Z"
 };
