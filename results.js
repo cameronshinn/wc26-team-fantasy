@@ -330,11 +330,11 @@ window.WC_RESULTS = {
       "b": "Morocco",
       "hg": 0,
       "ag": 0,
-      "penHg": 3,
+      "penHg": 2,
       "penAg": 3
     }
   ],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-06-30T03:55:18.052Z"
+  "lastUpdated": "2026-06-30T04:00:24.836Z"
 };
