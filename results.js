@@ -321,11 +321,11 @@ window.WC_RESULTS = {
       "b": "Paraguay",
       "hg": 0,
       "ag": 0,
-      "penHg": 4,
-      "penAg": 5
+      "penHg": 3,
+      "penAg": 4
     }
   ],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-06-30T00:20:21.465Z"
+  "lastUpdated": "2026-06-30T00:25:21.352Z"
 };
