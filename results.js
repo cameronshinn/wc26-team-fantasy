@@ -346,9 +346,16 @@ window.WC_RESULTS = {
       "b": "Sweden",
       "hg": 3,
       "ag": 0
+    },
+    {
+      "round": "R32",
+      "a": "Mexico",
+      "b": "Ecuador",
+      "hg": 2,
+      "ag": 0
     }
   ],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-07-01T04:00:23.066Z"
+  "lastUpdated": "2026-07-01T04:05:20.967Z"
 };
