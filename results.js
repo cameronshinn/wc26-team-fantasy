@@ -353,9 +353,16 @@ window.WC_RESULTS = {
       "b": "Ecuador",
       "hg": 2,
       "ag": 0
+    },
+    {
+      "round": "R32",
+      "a": "England",
+      "b": "DR Congo",
+      "hg": 2,
+      "ag": 1
     }
   ],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-07-01T18:00:27.448Z"
+  "lastUpdated": "2026-07-01T18:05:22.912Z"
 };
