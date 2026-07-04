@@ -418,9 +418,16 @@ window.WC_RESULTS = {
       "b": "Ghana",
       "hg": 1,
       "ag": 0
+    },
+    {
+      "round": "R16",
+      "a": "Canada",
+      "b": "Morocco",
+      "hg": 0,
+      "ag": 3
     }
   ],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-07-04T19:00:37.666Z"
+  "lastUpdated": "2026-07-04T19:05:21.672Z"
 };
