@@ -411,9 +411,16 @@ window.WC_RESULTS = {
       "b": "Cape Verde",
       "hg": 2,
       "ag": 1
+    },
+    {
+      "round": "R32",
+      "a": "Colombia",
+      "b": "Ghana",
+      "hg": 1,
+      "ag": 0
     }
   ],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-07-04T03:30:26.410Z"
+  "lastUpdated": "2026-07-04T03:35:27.983Z"
 };
