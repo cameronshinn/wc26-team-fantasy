@@ -411,30 +411,9 @@ window.WC_RESULTS = {
       "b": "Cape Verde",
       "hg": 2,
       "ag": 1
-    },
-    {
-      "round": "R32",
-      "a": "Colombia",
-      "b": "Ghana",
-      "hg": 1,
-      "ag": 0
-    },
-    {
-      "round": "R16",
-      "a": "Canada",
-      "b": "Morocco",
-      "hg": 0,
-      "ag": 3
-    },
-    {
-      "round": "R16",
-      "a": "Paraguay",
-      "b": "France",
-      "hg": 0,
-      "ag": 1
     }
   ],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-07-05T11:10:36.327Z"
+  "lastUpdated": "2026-07-05T11:15:24.369Z"
 };
