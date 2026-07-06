@@ -439,9 +439,16 @@ window.WC_RESULTS = {
       "b": "Norway",
       "hg": 1,
       "ag": 2
+    },
+    {
+      "round": "R16",
+      "a": "Mexico",
+      "b": "England",
+      "hg": 2,
+      "ag": 3
     }
   ],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-07-06T03:05:18.593Z"
+  "lastUpdated": "2026-07-06T03:10:31.118Z"
 };
