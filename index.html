@@ -865,8 +865,9 @@ function runMonteCarlo(N,seedStr){
       const gbo=TEAMS[gb]?.o;if(gbo)S[gbo]+=SCORING.goldenBoot;
     }
 
-    const pw=Object.keys(S).reduce((a,b)=>S[a]>=S[b]?a:b);
-    wc[pw]++;
+    const maxS=Math.max(...Object.values(S));
+    const tied=Object.keys(S).filter(p=>S[p]===maxS);
+    tied.forEach(p=>wc[p]+=1/tied.length);
   }
 
   function modeOf(slots){
