@@ -508,5 +508,5 @@ window.WC_RESULTS = {
   ],
   "goldenBoot": null,
   "thirdPlaceGame": null,
-  "lastUpdated": "2026-07-14T14:05:22.903Z"
+  "lastUpdated": "2026-07-14T14:10:31.200Z"
 };
