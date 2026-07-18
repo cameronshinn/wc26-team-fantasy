@@ -521,6 +521,11 @@ window.WC_RESULTS = {
     }
   ],
   "goldenBoot": null,
-  "thirdPlaceGame": null,
-  "lastUpdated": "2026-07-18T23:00:22.888Z"
+  "thirdPlaceGame": {
+    "a": "France",
+    "b": "England",
+    "hg": 4,
+    "ag": 6
+  },
+  "lastUpdated": "2026-07-18T23:05:24.167Z"
 };
