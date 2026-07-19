@@ -518,6 +518,13 @@ window.WC_RESULTS = {
       "b": "Argentina",
       "hg": 1,
       "ag": 2
+    },
+    {
+      "round": "F",
+      "a": "Spain",
+      "b": "Argentina",
+      "hg": 1,
+      "ag": 0
     }
   ],
   "goldenBoot": null,
@@ -527,5 +534,5 @@ window.WC_RESULTS = {
     "hg": 4,
     "ag": 6
   },
-  "lastUpdated": "2026-07-19T22:00:24.248Z"
+  "lastUpdated": "2026-07-19T22:05:21.138Z"
 };
