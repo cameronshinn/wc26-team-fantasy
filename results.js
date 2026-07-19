@@ -527,5 +527,5 @@ window.WC_RESULTS = {
     "hg": 4,
     "ag": 6
   },
-  "lastUpdated": "2026-07-19T18:00:24.913Z"
+  "lastUpdated": "2026-07-19T18:05:20.309Z"
 };
